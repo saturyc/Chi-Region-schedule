@@ -170,12 +170,15 @@ const DEMO=new URLSearchParams(location.search).has('demo');
 const D=['수','목','금','토','일','월','화'];
 const MAXC=5;
 const VIS0=18;
-const N=336;
+const N=343;
+const BASE=336;
+const SEND=49;
+const idxOf=(d,s)=>s<48?d*48+s:BASE+d;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lab=s=>String(Math.floor(s/2)).padStart(2,'0')+':'+(s%2?'30':'00');
 const toBits=s=>{const b=new Uint8Array(N);if(typeof s==='string')for(let i=0;i<N&&i<s.length;i++)b[i]=s.charCodeAt(i)===49?1:0;return b};
-const toStr=b=>{let s='';for(let i=0;i<N;i++)s+=b[i]?'1':'0';return s};
+const toStr=b=>{let n=BASE;for(let i=BASE;i<N;i++)if(b[i])n=N;let s='';for(let i=0;i<n;i++)s+=b[i]?'1':'0';return s};
 const anyBit=b=>{for(let i=0;i<N;i++)if(b[i])return true;return false};
 const ls={
   get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},
@@ -297,11 +300,11 @@ function agg(){
   const counts=new Uint16Array(N);
   E.forEach(o=>{for(let i=0;i<N;i++)if(o.b[i])counts[i]++});
   const days=D.map((_,d)=>{
-    const v=E.filter(o=>{for(let s=VIS0;s<48;s++)if(o.b[d*48+s])return true;return false}).map(o=>o.n);
-    let mx=0;for(let s=VIS0;s<48;s++)mx=Math.max(mx,counts[d*48+s]);
+    const v=E.filter(o=>{for(let s=VIS0;s<SEND;s++)if(o.b[idxOf(d,s)])return true;return false}).map(o=>o.n);
+    let mx=0;for(let s=VIS0;s<SEND;s++)mx=Math.max(mx,counts[idxOf(d,s)]);
     let best=null,st=null;
-    if(mx)for(let s=VIS0;s<=48;s++){
-      const ok=s<48&&counts[d*48+s]===mx;
+    if(mx)for(let s=VIS0;s<=SEND;s++){
+      const ok=s<SEND&&counts[idxOf(d,s)]===mx;
       if(ok&&st===null)st=s;
       if(!ok&&st!==null){if(!best||s-st>best.b-best.a)best={a:st,b:s};st=null}
     }
@@ -309,8 +312,8 @@ function agg(){
   });
   return {E,counts,days,tot:Math.max(E.length,1)};
 }
-const bounds=()=>[VIS0,48];
-const anyVis=b=>{for(let d=0;d<7;d++)for(let s=VIS0;s<48;s++)if(b[d*48+s])return true;return false};
+const bounds=()=>[VIS0,SEND];
+const anyVis=b=>{for(let d=0;d<7;d++)for(let s=VIS0;s<SEND;s++)if(b[idxOf(d,s)])return true;return false};
 
 /* ---------- 렌더 ---------- */
 function renderTabs(){
@@ -343,7 +346,7 @@ function buildGrid(){
   for(let s=a;s<b;s++){
     const half=s%2?' half':'';
     h+=`<div class="t${half}" data-row="${s}">${lab(s)}</div>`;
-    for(let d=0;d<7;d++)h+=`<div class="c${half}" data-i="${d*48+s}"></div>`;
+    for(let d=0;d<7;d++)h+=`<div class="c${half}" data-i="${idxOf(d,s)}"></div>`;
   }
   grid.innerHTML=h;
   refresh();
@@ -378,7 +381,7 @@ function refresh(){
   const tt=curTab()?curTab().title:'';
   if(view==='me'){
     $('best').innerHTML='';
-    const sd=D.filter((_,d)=>{if(!mb)return false;for(let s=VIS0;s<48;s++)if(mb[d*48+s])return true;return false});
+    const sd=D.filter((_,d)=>{if(!mb)return false;for(let s=VIS0;s<SEND;s++)if(mb[idxOf(d,s)])return true;return false});
     $('sum').textContent=`${tt} · ${chars[ci]} · 선택한 요일: ${sd.length?sd.join(', '):'없음'}`;
   }else{
     $('sum').textContent=`${tt} · 참여 ${A.E.length}명. 칸을 누르거나 올리면 그 시간 가능한 사람이 보입니다.`;
@@ -392,7 +395,7 @@ function refresh(){
   if(admin&&!$('adm').hidden)renderAdmin();
 }
 function showWho(i){
-  const d=Math.floor(i/48),s=i%48;
+  const d=i>=BASE?i-BASE:Math.floor(i/48),s=i>=BASE?48:i%48;
   const who=[];ents.forEach((b,n)=>{if(b[i])who.push(n)});
   who.sort((x,y)=>x.localeCompare(y,'ko'));
   $('sum').textContent=`${curTab().title} · ${D[d]} ${lab(s)} · ${who.length}명: ${who.join(', ')||'없음'}`;
@@ -501,13 +504,13 @@ grid.addEventListener('click',e=>{
   const ensure=()=>{let x=ents.get(name);if(!x){x=new Uint8Array(N);ents.set(name,x)}return x};
   if(h){
     const d=+h.dataset.col,x=ensure();let all=true;
-    for(let s=a;s<b;s++)if(!x[d*48+s])all=false;
-    for(let s=a;s<b;s++)x[d*48+s]=all?0:1;
+    for(let s=a;s<b;s++)if(!x[idxOf(d,s)])all=false;
+    for(let s=a;s<b;s++)x[idxOf(d,s)]=all?0:1;
     markDirty(name);refresh();
   }else if(t){
     const s=+t.dataset.row,x=ensure();let all=true;
-    for(let d=0;d<7;d++)if(!x[d*48+s])all=false;
-    for(let d=0;d<7;d++)x[d*48+s]=all?0:1;
+    for(let d=0;d<7;d++)if(!x[idxOf(d,s)])all=false;
+    for(let d=0;d<7;d++)x[idxOf(d,s)]=all?0:1;
     markDirty(name);refresh();
   }
 });
