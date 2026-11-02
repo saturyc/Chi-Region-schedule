@@ -82,6 +82,19 @@ header h1{font-size:19px;font-weight:600;margin:0;flex:1}
 .nm{border-radius:6px;padding:2px 8px;font-size:14px}
 .dupnote{font-size:12px;color:var(--text2);margin:10px 0 0}
 .askt{font-size:14px}
+textarea{background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius);padding:8px 11px;width:100%;resize:vertical;min-height:64px;outline:none;font:inherit;color:inherit}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+.memosec{margin:26px 0 0}
+.memosec h2{font-size:16px;font-weight:600;margin:0 0 8px}
+.memosec h2 span{font-weight:400;font-size:13px;color:var(--text2);margin-left:6px}
+.mform{display:flex;flex-direction:column;gap:6px;margin:0 0 10px}
+.mrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.memo{padding:10px 2px;border-top:1px solid var(--border)}
+.mh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mh b{font-size:14px}
+.macts{margin-left:auto;display:inline-flex;gap:4px;align-items:center}
+.macts button{border:0;background:transparent;padding:2px 8px;font-size:12px;color:var(--text2);min-height:28px}
+.mt{margin:3px 0 0;font-size:14px;white-space:pre-wrap;word-break:break-word}
 .adm{padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);margin:0 0 12px}
 .sec{margin:0 0 14px}
 .sec>.lbl{display:block;margin:0 0 6px;font-weight:600;color:var(--text)}
@@ -133,7 +146,7 @@ details p{margin:8px 0 0}
     <p class="err" id="cerr"></p>
 
     <div class="row">
-      <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button></div>
+      <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button><button data-v="memo">일정 메모</button></div>
       <span class="lg" id="lg" hidden><i style="background:color-mix(in srgb,var(--ok) 15%,transparent)"></i>적음<i style="background:var(--ok)"></i>많음</span>
       <div class="right">
         <span id="myreset" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap"></span>
@@ -147,6 +160,16 @@ details p{margin:8px 0 0}
     <div class="savebar" id="savebar"></div>
     <p class="sum" id="sum"></p>
     <div id="best"></div>
+
+    <section class="memosec" id="memosec">
+      <h2><span id="memo-title" style="margin:0;font-size:16px;color:var(--text);font-weight:600">일정 메모</span><span id="memo-count"></span></h2>
+      <div class="mform">
+        <div class="lbl">작성 캐릭터: <b id="memo-as" style="color:var(--text)"></b> · 캐릭터마다 이 탭에 메모 1개를 남길 수 있고, 다시 저장하면 바뀝니다.</div>
+        <textarea id="memo-in" maxlength="100" placeholder="가능한 일정이나 전달할 내용을 남겨 주세요 (100자 이내)"></textarea>
+        <div class="mrow"><button id="memo-save" style="font-weight:600">메모 남기기</button><span class="lbl" id="memo-cnt">0/100</span><span id="memo-msg" class="lbl"></span></div>
+      </div>
+      <div id="memo-list"></div>
+    </section>
 
     <details>
       <summary>홈 화면에 바로가기 만들기</summary>
@@ -219,7 +242,10 @@ function demoAdapter(){
   });
   ent.t1.set('민수1',toStr((()=>{const b=new Uint8Array(N);[30,31,32,33].forEach(i=>b[i]=1);return b})()));
   let adminHash=null;
-  const tabSubs=new Set(),entSubs=new Map();
+  const tabSubs=new Set(),entSubs=new Map(),memoSubs=new Map();
+  const memo={t1:new Map([['민수',{text:'수요일 저녁 9시 이후가 좋아요',t:Date.now()-3600e3}],['도현',{text:'금요일은 늦게 끝나요',t:Date.now()-7200e3}]]),t2:new Map(),t3:new Map()};
+  const memoList=t=>[...(memo[t]||new Map())].map(([name,v])=>({name,text:v.text,t:v.t}));
+  const notifyMemo=t=>(memoSubs.get(t)||new Set()).forEach(cb=>cb(memoList(t)));
   const tabList=()=>tabsData.map(t=>({...t}));
   const entList=t=>[...(ent[t]||new Map())].map(([name,slots])=>({name,slots}));
   const notifyTabs=()=>tabSubs.forEach(cb=>cb(tabList(),{fromCache:false}));
@@ -228,10 +254,13 @@ function demoAdapter(){
     label:'데모 모드',
     subscribeTabs(cb){tabSubs.add(cb);setTimeout(()=>cb(tabList(),{fromCache:false}),0);return()=>tabSubs.delete(cb)},
     subscribeEntries(t,cb){if(!entSubs.has(t))entSubs.set(t,new Set());entSubs.get(t).add(cb);setTimeout(()=>cb(entList(t)),0);return()=>entSubs.get(t).delete(cb)},
+    subscribeMemos(t,cb){if(!memoSubs.has(t))memoSubs.set(t,new Set());memoSubs.get(t).add(cb);setTimeout(()=>cb(memoList(t)),0);return()=>memoSubs.get(t).delete(cb)},
+    async saveMemo(t,name,text){memo[t].set(name,{text,t:Date.now()});notifyMemo(t)},
+    async deleteMemo(t,name){memo[t].delete(name);notifyMemo(t)},
     async saveEntry(t,name,slots){ent[t].set(name,slots);notifyEnt(t)},
     async deleteEntry(t,name){ent[t].delete(name);notifyEnt(t)},
-    async clearTab(t){ent[t]=new Map();notifyEnt(t)},
-    async addTab(title,order,hue){const id='t'+Date.now();tabsData.push({id,title,order,hue});ent[id]=new Map();notifyTabs();return id},
+    async clearTab(t){ent[t]=new Map();memo[t]=new Map();notifyEnt(t);notifyMemo(t)},
+    async addTab(title,order,hue){const id='t'+Date.now();tabsData.push({id,title,order,hue});ent[id]=new Map();memo[id]=new Map();notifyTabs();return id},
     async renameTab(id,title){tabsData.find(t=>t.id===id).title=title;notifyTabs()},
     async seedTabs(){},
     async getAdminHash(){return adminHash},
@@ -255,11 +284,19 @@ async function firebaseAdapter(onErr){
     subscribeEntries(t,cb){
       return F.onSnapshot(F.collection(db,'tabs',t,'entries'),snap=>cb(snap.docs.map(d=>({name:d.data().name,slots:d.data().slots}))),onErr);
     },
+    subscribeMemos(t,cb){
+      return F.onSnapshot(F.collection(db,'tabs',t,'memos'),snap=>cb(snap.docs.map(d=>{
+        const x=d.data({serverTimestamps:'estimate'});
+        return {name:x.name,text:x.text,t:x.updatedAt&&x.updatedAt.toMillis?x.updatedAt.toMillis():Date.now()};
+      })),onErr);
+    },
+    saveMemo:(t,name,text)=>F.setDoc(F.doc(db,'tabs',t,'memos',id(name)),{name,text,updatedAt:F.serverTimestamp()}),
+    deleteMemo:(t,name)=>F.deleteDoc(F.doc(db,'tabs',t,'memos',id(name))),
     saveEntry:(t,name,slots)=>F.setDoc(F.doc(db,'tabs',t,'entries',id(name)),{name,slots,updatedAt:F.serverTimestamp()}),
     deleteEntry:(t,name)=>F.deleteDoc(F.doc(db,'tabs',t,'entries',id(name))),
     async clearTab(t){
-      const snap=await F.getDocs(F.collection(db,'tabs',t,'entries'));
-      const docs=snap.docs;
+      const [s1,s2]=await Promise.all([F.getDocs(F.collection(db,'tabs',t,'entries')),F.getDocs(F.collection(db,'tabs',t,'memos'))]);
+      const docs=[...s1.docs,...s2.docs];
       for(let i=0;i<docs.length;i+=400){
         const b=F.writeBatch(db);
         docs.slice(i,i+400).forEach(d=>b.delete(d.ref));
@@ -280,6 +317,7 @@ async function firebaseAdapter(onErr){
 /* ---------- 상태 ---------- */
 let ad=null;
 let tabs=[],tabId=null,ents=new Map(),unsubE=null;
+let memos=[],unsubM=null,memoDraft=false,pendMemoDel=null;
 let chars=[];try{chars=JSON.parse(ls.get('regi_chars','[]'))||[]}catch(e){chars=[]}
 let ci=Math.min(+ls.get('regi_ci',0)||0,Math.max(chars.length-1,0));
 let view='me';
@@ -326,7 +364,7 @@ function renderChars(){
   let h='<span class="lbl">참여 캐릭터</span>';
   chars.forEach((c,i)=>{h+=`<span class="cc${i===ci?' on':''}" data-i="${i}" style="padding-right:12px">${esc(c)}</span>`});
   if(pendCharDel){
-    h+=`<span class="askt">"${esc(chars[ci])}" 캐릭터와 모든 탭의 투표를 삭제할까요?</span><button class="danger" data-act="cdel-yes">삭제</button><button data-act="cdel-no">취소</button>`;
+    h+=`<span class="askt">"${esc(chars[ci])}" 캐릭터와 모든 탭의 투표, 메모를 삭제할까요?</span><button class="danger" data-act="cdel-yes">삭제</button><button data-act="cdel-no">취소</button>`;
   }else{
     h+=chars.length<MAXC?'<button id="plus" style="padding:5px 12px">+ 캐릭터 추가</button>':'<span class="lbl">최대 '+MAXC+'개</span>';
     h+='<button data-act="cdel" class="danger" style="padding:5px 12px">캐릭터 삭제</button>';
@@ -444,6 +482,10 @@ function selectTab(id){
   pendDel=null;editing=null;pendReset=null;status='';pendMy=false;
   renderTabs();renderMyReset();buildGrid();
   unsubE=ad.subscribeEntries(id,onEntries);
+  if(unsubM){unsubM();unsubM=null}
+  memos=[];memoDraft=false;pendMemoDel=null;
+  renderMemos();fillMemoInput();
+  unsubM=ad.subscribeMemos(id,onMemos);
 }
 function onTabs(list,meta){
   list=list.slice().sort((a,b)=>(a.order||0)-(b.order||0));
@@ -524,12 +566,12 @@ function clearDirtyName(name){[...dirty.entries()].forEach(([k,d])=>{if(d.name==
 async function deleteChar(){
   const name=chars[ci];
   clearDirtyName(name);
-  try{for(const t of tabs)await ad.deleteEntry(t.id,name)}
+  try{for(const t of tabs){await ad.deleteEntry(t.id,name);await ad.deleteMemo(t.id,name)}}
   catch(e){pendCharDel=false;renderChars();$('cerr').textContent='삭제하지 못했습니다. 연결을 확인하고 다시 시도하세요.';return}
   chars.splice(ci,1);ci=Math.max(0,Math.min(ci,chars.length-1));saveChars();
   ents.delete(name);pendCharDel=false;pendMy=false;
   if(!chars.length){showOnboard();return}
-  renderChars();renderMyReset();refresh();
+  renderChars();renderMyReset();refresh();syncMemoUI();
 }
 $('crow').addEventListener('click',e=>{
   const b=e.target.closest('button');
@@ -542,7 +584,7 @@ $('crow').addEventListener('click',e=>{
     return;
   }
   const c=e.target.closest('.cc');
-  if(c){ci=+c.dataset.i;pendMy=false;pendCharDel=false;saveChars();renderChars();renderMyReset();refresh()}
+  if(c){ci=+c.dataset.i;pendMy=false;pendCharDel=false;saveChars();renderChars();renderMyReset();refresh();syncMemoUI()}
 });
 $('myreset').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
@@ -565,7 +607,7 @@ function addChar(){
   er.textContent='';
   chars.push(v);ci=chars.length-1;saveChars();pendMy=false;
   $('cn').value='';$('addrow').hidden=true;
-  renderChars();renderMyReset();refresh();
+  renderChars();renderMyReset();refresh();syncMemoUI();
 }
 $('cadd').addEventListener('click',addChar);
 $('cn').addEventListener('keydown',e=>{if(e.key==='Enter')addChar()});
@@ -573,6 +615,11 @@ $('cn').addEventListener('input',()=>{$('cerr').textContent=''});
 $('ccancel').addEventListener('click',()=>{$('addrow').hidden=true;$('cerr').textContent=''});
 $('vseg').addEventListener('click',e=>{
   const v=e.target.dataset.v;if(!v)return;
+  if(v==='memo'){
+    $('memosec').scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(()=>$('memo-in').focus({preventScroll:true}),400);
+    return;
+  }
   view=v;[...$('vseg').children].forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('lg').hidden=v!=='all';
   refresh();
@@ -603,9 +650,9 @@ function renderAdmin(){
   const t=curTab();
   const list=nameList();
   let h='<div class="sec"><span class="lbl">탭 관리</span><div class="row" style="margin:0"><input id="tn" type="text" maxlength="20" placeholder="탭 이름" style="width:160px" value="'+esc(tnVal)+'"><button data-act="tadd">+ 탭 추가</button><button data-act="tren">현재 탭 이름 변경</button><button data-act="alogout" style="margin-left:auto">관리자 나가기</button></div></div>';
-  h+='<div class="sec"><span class="lbl">투표 초기화 (새 주 시작)</span><div class="row" style="margin:0">';
-  if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표를 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
-  else if(pendReset==='all')h+=`<span>모든 탭(${tabs.length}개)의 투표를 지울까요?</span><button class="danger" data-act="reset-yes">예, 모두 지우기</button><button data-act="reset-no">취소</button>`;
+  h+='<div class="sec"><span class="lbl">투표·메모 초기화 (새 주 시작)</span><div class="row" style="margin:0">';
+  if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표와 메모를 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
+  else if(pendReset==='all')h+=`<span>모든 탭(${tabs.length}개)의 투표와 메모를 지울까요?</span><button class="danger" data-act="reset-yes">예, 모두 지우기</button><button data-act="reset-no">취소</button>`;
   else h+='<button data-act="reset-tab">현재 탭 전체 초기화</button><button data-act="reset-all">전체 탭 초기화</button><span class="lbl">탭과 이름은 그대로 남습니다</span>';
   h+='</div></div>';
   h+=`<div class="sec" style="margin-bottom:6px"><span class="lbl">참여자 관리 · ${esc(t.title)} · ${list.length}명</span><div class="pl">`;
@@ -642,15 +689,15 @@ $('adm').addEventListener('click',async e=>{
       const v=$('ac').value;
       if(v.length<4){setErrMsg('4자 이상 입력하세요.');return}
       const h=await sha(v);await ad.setAdminHash(h);adminHash=h;
-      admin=true;ss.set('regi_admin','1');done('관리자 코드를 설정했습니다.');return;
+      admin=true;ss.set('regi_admin','1');done('관리자 코드를 설정했습니다.');renderMemos();return;
     }
     if(act==='login'){
       const h=await sha($('ac').value);
-      if(h===adminHash){admin=true;ss.set('regi_admin','1');renderAdmin()}
+      if(h===adminHash){admin=true;ss.set('regi_admin','1');renderAdmin();renderMemos()}
       else setErrMsg('관리자 코드가 맞지 않습니다.');
       return;
     }
-    if(act==='alogout'){admin=false;ss.del('regi_admin');pendDel=null;editing=null;pendReset=null;status='';renderAdmin();return}
+    if(act==='alogout'){admin=false;ss.del('regi_admin');pendDel=null;editing=null;pendReset=null;status='';renderAdmin();renderMemos();return}
     if(act==='chcode'){
       const v=$('nc').value;
       if(v.length<4){setErrMsg('4자 이상 입력하세요.');return}
@@ -677,13 +724,13 @@ $('adm').addEventListener('click',async e=>{
       const all=pendReset==='all';pendReset=null;
       const targets=all?tabs.map(x=>x.id):[tabId];
       for(const id of targets){clearDirtyFor(id);await ad.clearTab(id)}
-      done(all?'모든 탭의 투표를 초기화했습니다.':`"${t.title}" 탭의 투표를 초기화했습니다.`);return;
+      done(all?'모든 탭의 투표와 메모를 초기화했습니다.':`"${t.title}" 탭의 투표와 메모를 초기화했습니다.`);return;
     }
     if(act==='del'){pendDel=n;editing=null;status='';renderAdmin();return}
     if(act==='del-no'){pendDel=null;renderAdmin();return}
     if(act==='del-yes'){
       clearDirtyFor(tabId);
-      await ad.deleteEntry(tabId,n);pendDel=null;
+      await ad.deleteEntry(tabId,n);await ad.deleteMemo(tabId,n);pendDel=null;
       done(`"${n}" 참여자를 삭제했습니다.`);return;
     }
     if(act==='ren'){editing=n;pendDel=null;status='';renderAdmin();return}
@@ -700,6 +747,8 @@ $('adm').addEventListener('click',async e=>{
       clearDirtyFor(tabId);
       await ad.saveEntry(tabId,nv,toStr(bits));
       await ad.deleteEntry(tabId,n);
+      const mm=memos.find(x=>x.name===n);
+      if(mm){if(!memos.some(x=>x.name===nv))await ad.saveMemo(tabId,nv,mm.text);await ad.deleteMemo(tabId,n)}
       if(chars.includes(n)){chars=[...new Set(chars.map(c=>c===n?nv:c))];ci=Math.min(ci,chars.length-1);saveChars();renderChars()}
       done(dst?`"${n}"을(를) "${nv}"에 합쳤습니다. 체크는 둘을 합친 결과입니다.`:`"${n}" 이름을 "${nv}"(으)로 바꿨습니다.`);
       return;
@@ -710,10 +759,72 @@ $('adm').addEventListener('click',async e=>{
 });
 
 /* ---------- 시작 ---------- */
+function fmtTime(t){
+  const d=new Date(t);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function updMemoCnt(){$('memo-cnt').textContent=[...$('memo-in').value].length+'/100'}
+function memoMsg(t,kind){const m=$('memo-msg');m.textContent=t||'';m.className=kind==='err'?'err':kind==='ok'?'ok':'lbl';m.style.margin='0'}
+function fillMemoInput(){
+  const mine=memos.find(m=>m.name===chars[ci]);
+  $('memo-in').value=mine?mine.text:'';
+  updMemoCnt();
+}
+function renderMemos(){
+  const t=curTab();
+  $('memo-title').textContent='일정 메모'+(t?' · '+t.title:'');
+  $('memo-as').textContent=chars[ci]||'';
+  $('memo-count').textContent=memos.length?memos.length+'개':'';
+  const w=$('memo-list');
+  if(!memos.length){w.innerHTML='<p class="lbl" style="margin:8px 0 0">아직 남긴 메모가 없습니다.</p>';return}
+  w.innerHTML=memos.map(m=>{
+    const own=chars.includes(m.name);
+    let acts='';
+    if(pendMemoDel===m.name)acts=`<span class="askt">삭제할까요?</span><button data-act="m-del-yes" data-n="${esc(m.name)}">예</button><button data-act="m-del-no">아니오</button>`;
+    else if(own||admin)acts=(own?`<button data-act="m-edit" data-n="${esc(m.name)}">수정</button>`:'')+`<button data-act="m-del" data-n="${esc(m.name)}">삭제</button>`;
+    return `<div class="memo"><div class="mh"><b>${esc(m.name)}</b><span class="lbl">${fmtTime(m.t)}</span><span class="macts">${acts}</span></div><div class="mt">${esc(m.text)}</div></div>`;
+  }).join('');
+}
+function syncMemoUI(){memoDraft=false;pendMemoDel=null;memoMsg('');fillMemoInput();renderMemos()}
+function onMemos(list){
+  memos=list.filter(m=>m&&m.name).sort((a,b)=>b.t-a.t);
+  renderMemos();
+  if(!memoDraft)fillMemoInput();
+}
+async function saveMemoUI(){
+  const name=chars[ci];
+  const text=$('memo-in').value.replace(/\s*\n\s*/g,' ').trim();
+  if(!text){memoMsg('내용을 입력하세요.','err');return}
+  if([...text].length>100){memoMsg('100자 이내로 입력하세요.','err');return}
+  try{
+    await ad.saveMemo(tabId,name,text);
+    memoDraft=false;memoMsg('저장했습니다.','ok');
+  }catch(e){memoMsg('저장하지 못했습니다. 연결을 확인하고 다시 시도하세요.','err')}
+}
+$('memo-save').addEventListener('click',saveMemoUI);
+$('memo-in').addEventListener('input',()=>{memoDraft=true;updMemoCnt();memoMsg('')});
+$('memo-in').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();saveMemoUI()}});
+$('memo-list').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b||!b.dataset.act)return;
+  const act=b.dataset.act,n=b.dataset.n;
+  if(act==='m-edit'){
+    const i=chars.indexOf(n);
+    if(i>=0){ci=i;saveChars();renderChars();renderMyReset();refresh();syncMemoUI();$('memo-in').focus();$('memo-in').scrollIntoView({block:'center',behavior:'smooth'})}
+    return;
+  }
+  if(act==='m-del'){pendMemoDel=n;renderMemos();return}
+  if(act==='m-del-no'){pendMemoDel=null;renderMemos();return}
+  if(act==='m-del-yes'){
+    try{await ad.deleteMemo(tabId,n)}catch(err){memoMsg('삭제하지 못했습니다.','err')}
+    pendMemoDel=null;
+    if(n===chars[ci]){memoDraft=false;fillMemoInput()}
+    renderMemos();
+  }
+});
 function keepStorage(){try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}}
 function startMain(){
   $('onboard').hidden=true;$('main').hidden=false;
-  renderChars();renderMyReset();
+  renderChars();renderMyReset();renderMemos();
   if(tabs.length)refresh();
   keepStorage();
 }
