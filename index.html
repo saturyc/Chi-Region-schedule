@@ -48,7 +48,8 @@ header h1{font-size:19px;font-weight:600;margin:0;flex:1}
 .conn i{width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block}
 .conn.on i{background:var(--ok)}
 .conn.err i{background:var(--danger)}
-#install{display:none;font-size:13px;min-height:32px;padding:4px 12px}
+#install{display:none;font-size:12px;min-height:28px;padding:2px 10px;white-space:nowrap}
+#ihint{font-size:13px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin:0 0 10px}
 .tabs{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap}
 .tabs button{padding:9px 20px;font-size:15px;font-weight:600;border-width:1.5px;border-style:solid}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
@@ -61,29 +62,26 @@ header h1{font-size:19px;font-weight:600;margin:0;flex:1}
 .lbl{font-size:13px;color:var(--text2)}
 .err{font-size:13px;color:var(--danger);margin:0 0 8px;min-height:0}
 .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#paintmode{display:none}
-@media (pointer:coarse){#paintmode{display:inline-block}}
-#paintmode.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-text);font-weight:600}
 .lg{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)}
 .lg i{display:inline-block;width:14px;height:14px;border-radius:3px}
-#grid{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr));user-select:none;-webkit-user-select:none;touch-action:pan-y;border:1px solid var(--border);border-radius:12px;overflow:clip;background:var(--surface)}
-#grid.paint{touch-action:none}
+#grid{display:grid;grid-template-columns:58px repeat(7,minmax(0,1fr));user-select:none;-webkit-user-select:none;touch-action:pan-y;border:1px solid var(--border);border-radius:12px;overflow:clip;background:var(--surface)}
 .h{font-size:14px;font-weight:600;text-align:center;padding:7px 0;background:var(--surface2);border-bottom:1px solid var(--border-strong);cursor:pointer;line-height:1.35;position:sticky;top:0;z-index:2}
 .h small{display:block;font-size:12px;font-weight:400;color:var(--text2)}
 .h.best{background:var(--ok-bg)}.h.best small{color:var(--ok-text)}
 .h.second{background:var(--accent-bg)}.h.second small{color:var(--accent-text)}
-.t{font-size:12px;color:var(--text2);text-align:right;padding:0 7px 0 0;height:28px;line-height:28px;cursor:pointer;border-top:1px solid var(--border-strong)}
+.t{font-size:14px;color:var(--text2);text-align:right;padding:0 8px 0 0;height:28px;line-height:28px;cursor:pointer;border-top:1px solid var(--border-strong)}
 .t.half{border-top:1px dashed var(--border);color:var(--text3)}
 .c{height:28px;border-left:1px solid var(--border);border-top:1px solid var(--border-strong);font-size:12px;text-align:center;line-height:28px;cursor:pointer}
 .c.half{border-top:1px dashed var(--border)}
-.c.mine{outline:2px solid var(--accent);outline-offset:-2px}
+.c .v{font-size:11px;font-weight:700;margin-left:1px}
 .sum{font-size:14px;color:var(--text2);margin:10px 0 0;min-height:22px}
 .box{margin:12px 0 0;padding:14px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}
 .box p{margin:0 0 8px;font-size:15px;font-weight:600}
 .box p span{font-weight:400;color:var(--text2)}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{border-radius:var(--radius);padding:3px 10px;font-size:14px;background:var(--ok-bg);color:var(--ok-text)}
-.box.s .chip{background:var(--accent-bg);color:var(--accent-text)}
+.chips{display:flex;flex-wrap:wrap;gap:4px 6px}
+.nm{border-radius:6px;padding:2px 8px;font-size:14px}
+.dupnote{font-size:12px;color:var(--text2);margin:10px 0 0}
+.askt{font-size:14px}
 .adm{padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);margin:0 0 12px}
 .sec{margin:0 0 14px}
 .sec>.lbl{display:block;margin:0 0 6px;font-weight:600;color:var(--text)}
@@ -108,9 +106,10 @@ details p{margin:8px 0 0}
 <div class="wrap">
   <header>
     <h1>레기온 일정표</h1>
-    <button id="install">앱 설치</button>
     <span class="conn" id="conn"><i></i><span id="connt">연결 중</span></span>
+    <button id="install">앱 설치</button>
   </header>
+  <p id="ihint" hidden></p>
 
   <div id="onboard" class="card" hidden>
     <h2>처음 오셨네요</h2>
@@ -136,9 +135,8 @@ details p{margin:8px 0 0}
     <div class="row">
       <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button></div>
       <span class="lg" id="lg" hidden><i style="background:color-mix(in srgb,var(--ok) 15%,transparent)"></i>적음<i style="background:var(--ok)"></i>많음</span>
-      <button id="paintmode" aria-pressed="false">드래그로 칠하기</button>
       <div class="right">
-        <div class="seg" id="rseg"><button data-r="day" class="on">09–24시</button><button data-r="full">24시간</button></div>
+        <span id="myreset" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap"></span>
         <button id="admbtn" style="font-size:13px">관리자</button>
       </div>
     </div>
@@ -170,7 +168,8 @@ const FB_VER='10.14.1';
 const DEMO=new URLSearchParams(location.search).has('demo');
 
 const D=['수','목','금','토','일','월','화'];
-const HUES=['#378ADD','#7F77DD','#1D9E75','#D85A30','#D4537E'];
+const MAXC=5;
+const VIS0=18;
 const N=336;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -280,10 +279,10 @@ let ad=null;
 let tabs=[],tabId=null,ents=new Map(),unsubE=null;
 let chars=[];try{chars=JSON.parse(ls.get('regi_chars','[]'))||[]}catch(e){chars=[]}
 let ci=Math.min(+ls.get('regi_ci',0)||0,Math.max(chars.length-1,0));
-let view='me',range='day',paintMode=false;
+let view='me';
 let paint=null,dragging=false,touchStart=null;
 let admin=ss.get('regi_admin')==='1';
-let pendReset=null,pendDel=null,editing=null,status='',tnVal='',adminHash=undefined,seeded=false;
+let pendReset=null,pendDel=null,editing=null,status='',tnVal='',adminHash=undefined,seeded=false,pendMy=false,pendCharDel=false;
 const dirty=new Map();
 const grid=$('grid');
 const curTab=()=>tabs.find(t=>t.id===tabId);
@@ -293,15 +292,15 @@ function setSave(t){$('savebar').textContent=t}
 
 /* ---------- 집계 ---------- */
 function agg(){
-  const E=[];ents.forEach((b,n)=>{if(anyBit(b))E.push({n,b})});
+  const E=[];ents.forEach((b,n)=>{if(anyVis(b))E.push({n,b})});
   E.sort((x,y)=>x.n.localeCompare(y.n,'ko'));
   const counts=new Uint16Array(N);
   E.forEach(o=>{for(let i=0;i<N;i++)if(o.b[i])counts[i]++});
   const days=D.map((_,d)=>{
-    const v=E.filter(o=>{for(let s=0;s<48;s++)if(o.b[d*48+s])return true;return false}).map(o=>o.n);
-    let mx=0;for(let s=0;s<48;s++)mx=Math.max(mx,counts[d*48+s]);
+    const v=E.filter(o=>{for(let s=VIS0;s<48;s++)if(o.b[d*48+s])return true;return false}).map(o=>o.n);
+    let mx=0;for(let s=VIS0;s<48;s++)mx=Math.max(mx,counts[d*48+s]);
     let best=null,st=null;
-    if(mx)for(let s=0;s<=48;s++){
+    if(mx)for(let s=VIS0;s<=48;s++){
       const ok=s<48&&counts[d*48+s]===mx;
       if(ok&&st===null)st=s;
       if(!ok&&st!==null){if(!best||s-st>best.b-best.a)best={a:st,b:s};st=null}
@@ -310,24 +309,32 @@ function agg(){
   });
   return {E,counts,days,tot:Math.max(E.length,1)};
 }
-const bounds=()=>range==='day'?[18,48]:[0,48];
+const bounds=()=>[VIS0,48];
+const anyVis=b=>{for(let d=0;d<7;d++)for(let s=VIS0;s<48;s++)if(b[d*48+s])return true;return false};
 
 /* ---------- 렌더 ---------- */
 function renderTabs(){
-  $('tabs').innerHTML=tabs.map((t,i)=>{
-    const c=HUES[(t.hue??i)%HUES.length];
-    return t.id===tabId
-      ?`<button data-id="${esc(t.id)}" style="background:${c};border-color:${c};color:#fff">${esc(t.title)}</button>`
-      :`<button data-id="${esc(t.id)}" style="background:color-mix(in srgb, ${c} 16%, transparent);border-color:${c}">${esc(t.title)}</button>`;
-  }).join('');
+  $('tabs').innerHTML=tabs.map(t=>t.id===tabId
+    ?`<button data-id="${esc(t.id)}" style="background:#5B3FC4;border-color:#5B3FC4;color:#fff">${esc(t.title)}</button>`
+    :`<button data-id="${esc(t.id)}" style="background:color-mix(in srgb, #378ADD 16%, transparent);border-color:#378ADD">${esc(t.title)}</button>`
+  ).join('');
 }
 function renderChars(){
   let h='<span class="lbl">참여 캐릭터</span>';
-  chars.forEach((c,i)=>{
-    h+=`<span class="cc${i===ci?' on':''}" data-i="${i}">${esc(c)}${chars.length>1?`<button data-rm="${i}" aria-label="${esc(c)} 삭제">×</button>`:'<span style="width:6px"></span>'}</span>`;
-  });
-  h+=chars.length<3?'<button id="plus" style="padding:5px 12px">+ 캐릭터 추가</button>':'<span class="lbl">최대 3개</span>';
+  chars.forEach((c,i)=>{h+=`<span class="cc${i===ci?' on':''}" data-i="${i}" style="padding-right:12px">${esc(c)}</span>`});
+  if(pendCharDel){
+    h+=`<span class="askt">"${esc(chars[ci])}" 캐릭터와 모든 탭의 투표를 삭제할까요?</span><button class="danger" data-act="cdel-yes">삭제</button><button data-act="cdel-no">취소</button>`;
+  }else{
+    h+=chars.length<MAXC?'<button id="plus" style="padding:5px 12px">+ 캐릭터 추가</button>':'<span class="lbl">최대 '+MAXC+'개</span>';
+    h+='<button data-act="cdel" class="danger" style="padding:5px 12px">캐릭터 삭제</button>';
+  }
   $('crow').innerHTML=h;
+}
+function renderMyReset(){
+  const w=$('myreset');if(!w)return;
+  w.innerHTML=pendMy
+    ?`<span class="askt">"${esc(chars[ci])}"의 이 탭 체크를 지울까요?</span><button class="danger" data-act="my-yes">지우기</button><button data-act="my-no">취소</button>`
+    :'<button data-act="my-ask" title="선택한 캐릭터의 체크만 이 탭에서 지웁니다">현재 탭 초기화</button>';
 }
 function buildGrid(){
   const [a,b]=bounds();
@@ -353,9 +360,9 @@ function refresh(){
     }else{
       const c=A.counts[i];
       el.style.background=c?`color-mix(in srgb, var(--ok) ${Math.round(15+85*c/A.tot)}%, transparent)`:'transparent';
-      el.textContent=c||'';
+      const mine=c&&chars.some(n=>{const b=ents.get(n);return b&&b[i]});
+      el.innerHTML=c?(mine?`${c}<span class="v">✓</span>`:String(c)):'';
       el.style.color=c/A.tot>0.6?'var(--on-ok)':'';
-      el.classList.toggle('mine',chars.some(n=>{const b=ents.get(n);return b&&b[i]}));
     }
   });
   const rank=A.days.filter(x=>x.v.length).sort((x,y)=>y.v.length-x.v.length||y.mx-x.mx||x.d-y.d).slice(0,2);
@@ -371,12 +378,16 @@ function refresh(){
   const tt=curTab()?curTab().title:'';
   if(view==='me'){
     $('best').innerHTML='';
-    $('sum').textContent=`${tt} · ${chars[ci]} 체크: ${mb?[...mb].filter(Boolean).length/2:0}시간`;
+    const sd=D.filter((_,d)=>{if(!mb)return false;for(let s=VIS0;s<48;s++)if(mb[d*48+s])return true;return false});
+    $('sum').textContent=`${tt} · ${chars[ci]} · 선택한 요일: ${sd.length?sd.join(', '):'없음'}`;
   }else{
     $('sum').textContent=`${tt} · 참여 ${A.E.length}명. 칸을 누르거나 올리면 그 시간 가능한 사람이 보입니다.`;
-    $('best').innerHTML=rank.length?rank.map((x,i)=>
-      `<div class="box${i?' s':''}"><p>${i+1}위 ${D[x.d]}요일 · ${x.v.length}명 <span>· 최다 투표 시간 ${lab(x.best.a)}–${lab(x.best.b)} (${x.mx}명)</span></p><div class="chips">${x.v.map(n=>`<span class="chip">${esc(n)}</span>`).join('')}</div></div>`
-    ).join(''):'<div class="box"><p>아직 투표한 사람이 없습니다</p></div>';
+    const dups=new Map();
+    if(rank.length===2){const s2=new Set(rank[1].v);rank[0].v.forEach(n=>{if(s2.has(n))dups.set(n,dups.size)})}
+    const nm=n=>dups.has(n)?`<span class="nm" style="background:hsl(${Math.round((dups.get(n)*137.5)%360)} 75% 55% / .32)">${esc(n)}</span>`:`<span class="nm">${esc(n)}</span>`;
+    $('best').innerHTML=(rank.length?rank.map((x,i)=>
+      `<div class="box"><p>${i+1}위 ${D[x.d]}요일 · ${x.v.length}명 <span>· 최다 투표 시간 ${lab(x.best.a)}–${lab(x.best.b)} (${x.mx}명)</span></p><div class="chips">${x.v.map(nm).join('')}</div></div>`
+    ).join(''):'<div class="box"><p>아직 투표한 사람이 없습니다</p></div>')+(dups.size?'<p class="dupnote">배경색이 같은 이름은 1위와 2위 요일 모두 가능한 캐릭터입니다.</p>':'');
   }
   if(admin&&!$('adm').hidden)renderAdmin();
 }
@@ -427,8 +438,8 @@ function selectTab(id){
   tabId=id;ls.set('regi_tab',id);
   if(unsubE){unsubE();unsubE=null}
   ents=new Map();
-  pendDel=null;editing=null;pendReset=null;status='';
-  renderTabs();buildGrid();
+  pendDel=null;editing=null;pendReset=null;status='';pendMy=false;
+  renderTabs();renderMyReset();buildGrid();
   unsubE=ad.subscribeEntries(id,onEntries);
 }
 function onTabs(list,meta){
@@ -464,7 +475,7 @@ function curVal(el){const b=ents.get(chars[ci]);return !!(b&&b[+el.dataset.i])}
 grid.addEventListener('pointerdown',e=>{
   if(view!=='me')return;
   const el=e.target.closest('.c');if(!el)return;
-  if(e.pointerType==='touch'&&!paintMode){touchStart={x:e.clientX,y:e.clientY,el};return}
+  if(e.pointerType==='touch'){touchStart={x:e.clientX,y:e.clientY,el};return}
   dragging=true;paint=!curVal(el);setCell(el,paint);
   e.preventDefault();
 });
@@ -506,25 +517,52 @@ $('tabs').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.id!==tabId)selectTab(b.dataset.id);
 });
+function clearDirtyName(name){[...dirty.entries()].forEach(([k,d])=>{if(d.name===name){clearTimeout(d.timer);dirty.delete(k)}})}
+async function deleteChar(){
+  const name=chars[ci];
+  clearDirtyName(name);
+  try{for(const t of tabs)await ad.deleteEntry(t.id,name)}
+  catch(e){pendCharDel=false;renderChars();$('cerr').textContent='삭제하지 못했습니다. 연결을 확인하고 다시 시도하세요.';return}
+  chars.splice(ci,1);ci=Math.max(0,Math.min(ci,chars.length-1));saveChars();
+  ents.delete(name);pendCharDel=false;pendMy=false;
+  if(!chars.length){showOnboard();return}
+  renderChars();renderMyReset();refresh();
+}
 $('crow').addEventListener('click',e=>{
-  const rm=e.target.dataset.rm;
-  if(rm!==undefined){
-    chars.splice(+rm,1);ci=Math.min(ci,chars.length-1);saveChars();
-    renderChars();refresh();return;
+  const b=e.target.closest('button');
+  if(b){
+    if(b.id==='plus'){$('addrow').hidden=false;$('cn').focus();return}
+    const act=b.dataset.act;
+    if(act==='cdel'){pendCharDel=true;$('addrow').hidden=true;$('cerr').textContent='';renderChars();return}
+    if(act==='cdel-no'){pendCharDel=false;renderChars();return}
+    if(act==='cdel-yes'){deleteChar();return}
+    return;
   }
-  if(e.target.id==='plus'){$('addrow').hidden=false;$('cn').focus();return}
   const c=e.target.closest('.cc');
-  if(c){ci=+c.dataset.i;saveChars();renderChars();refresh()}
+  if(c){ci=+c.dataset.i;pendMy=false;pendCharDel=false;saveChars();renderChars();renderMyReset();refresh()}
+});
+$('myreset').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const act=b.dataset.act;
+  if(act==='my-ask'){pendMy=true;renderMyReset();return}
+  if(act==='my-no'){pendMy=false;renderMyReset();return}
+  if(act==='my-yes'){
+    const name=chars[ci],bits=ents.get(name);
+    pendMy=false;
+    if(bits&&anyBit(bits)){bits.fill(0);markDirty(name)}
+    renderMyReset();refresh();
+  }
 });
 function addChar(){
   const v=$('cn').value.trim(),er=$('cerr');
   const m=validName(v);
   if(m){er.textContent=m;return}
   if(chars.includes(v)){er.textContent='이미 추가한 캐릭터입니다.';return}
+  if(chars.length>=MAXC){er.textContent='캐릭터는 최대 '+MAXC+'개까지 추가할 수 있습니다.';return}
   er.textContent='';
-  chars.push(v);ci=chars.length-1;saveChars();
+  chars.push(v);ci=chars.length-1;saveChars();pendMy=false;
   $('cn').value='';$('addrow').hidden=true;
-  renderChars();refresh();
+  renderChars();renderMyReset();refresh();
 }
 $('cadd').addEventListener('click',addChar);
 $('cn').addEventListener('keydown',e=>{if(e.key==='Enter')addChar()});
@@ -535,17 +573,6 @@ $('vseg').addEventListener('click',e=>{
   view=v;[...$('vseg').children].forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('lg').hidden=v!=='all';
   refresh();
-});
-$('rseg').addEventListener('click',e=>{
-  const r=e.target.dataset.r;if(!r)return;
-  range=r;[...$('rseg').children].forEach(b=>b.classList.toggle('on',b.dataset.r===r));
-  buildGrid();
-});
-$('paintmode').addEventListener('click',()=>{
-  paintMode=!paintMode;
-  $('paintmode').classList.toggle('on',paintMode);
-  $('paintmode').setAttribute('aria-pressed',String(paintMode));
-  grid.classList.toggle('paint',paintMode);
 });
 
 /* ---------- 관리자 ---------- */
@@ -576,7 +603,7 @@ function renderAdmin(){
   h+='<div class="sec"><span class="lbl">투표 초기화 (새 주 시작)</span><div class="row" style="margin:0">';
   if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표를 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
   else if(pendReset==='all')h+=`<span>모든 탭(${tabs.length}개)의 투표를 지울까요?</span><button class="danger" data-act="reset-yes">예, 모두 지우기</button><button data-act="reset-no">취소</button>`;
-  else h+='<button data-act="reset-tab">현재 탭 초기화</button><button data-act="reset-all">전체 탭 초기화</button><span class="lbl">탭과 이름은 그대로 남습니다</span>';
+  else h+='<button data-act="reset-tab">현재 탭 전체 초기화</button><button data-act="reset-all">전체 탭 초기화</button><span class="lbl">탭과 이름은 그대로 남습니다</span>';
   h+='</div></div>';
   h+=`<div class="sec" style="margin-bottom:6px"><span class="lbl">참여자 관리 · ${esc(t.title)} · ${list.length}명</span><div class="pl">`;
   if(!list.length)h+='<span class="lbl">참여자가 없습니다</span>';
@@ -680,36 +707,44 @@ $('adm').addEventListener('click',async e=>{
 });
 
 /* ---------- 시작 ---------- */
+function keepStorage(){try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}}
 function startMain(){
   $('onboard').hidden=true;$('main').hidden=false;
-  renderChars();
+  renderChars();renderMyReset();
   if(tabs.length)refresh();
+  keepStorage();
 }
-function onboard(){
+function showOnboard(){
   $('main').hidden=true;$('onboard').hidden=false;
-  const go=()=>{
-    const v=$('ob-name').value.trim(),m=validName(v);
-    if(m){$('ob-err').textContent=m;return}
-    chars=[v];ci=0;saveChars();startMain();
-  };
-  $('ob-go').addEventListener('click',go);
-  $('ob-name').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
-  $('ob-name').addEventListener('input',()=>{$('ob-err').textContent=''});
+  $('ob-name').value='';$('ob-err').textContent='';
 }
+function goOnboard(){
+  const v=$('ob-name').value.trim(),m=validName(v);
+  if(m){$('ob-err').textContent=m;return}
+  chars=[v];ci=0;saveChars();startMain();
+}
+$('ob-go').addEventListener('click',goOnboard);
+$('ob-name').addEventListener('keydown',e=>{if(e.key==='Enter')goOnboard()});
+$('ob-name').addEventListener('input',()=>{$('ob-err').textContent=''});
 let deferredPrompt=null;
-addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault();deferredPrompt=e;$('install').style.display='inline-block';
-});
+const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(!standalone())$('install').style.display='inline-block';
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
+addEventListener('appinstalled',()=>{$('install').style.display='none';$('ihint').hidden=true});
 $('install').addEventListener('click',async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();await deferredPrompt.userChoice;
-  deferredPrompt=null;$('install').style.display='none';
+  if(deferredPrompt){
+    deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;return;
+  }
+  const h=$('ihint');
+  h.textContent=isIOS()?'아이폰은 사파리에서 하단의 공유 버튼을 누른 뒤 "홈 화면에 추가"를 선택하세요.':'브라우저 메뉴(⋮)에서 "앱 설치" 또는 "홈 화면에 추가"를 선택하세요.';
+  h.hidden=!h.hidden;
 });
 addEventListener('online',()=>setConn('on',ad?ad.label:''));
 addEventListener('offline',()=>setConn('err','오프라인'));
 
 (async()=>{
-  if(chars.length)startMain();else onboard();
+  if(chars.length)startMain();else showOnboard();
   try{
     if(DEMO){ad=demoAdapter()}
     else{
