@@ -123,6 +123,8 @@ textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
 .jf p{margin:0 0 10px;font-size:13px}
 .savebar{font-size:12px;color:var(--text3);min-height:18px;margin:6px 0 0;text-align:right}
 details{margin:22px 0 0;font-size:13px;color:var(--text2)}
+#mgr{margin:4px 0 0;padding-top:12px;border-top:1px solid var(--border)}
+#mgr summary{font-weight:600;color:var(--text);font-size:14px}
 details summary{cursor:pointer}
 details p{margin:8px 0 0}
 [hidden]{display:none!important}
@@ -223,7 +225,13 @@ details p{margin:8px 0 0}
       </div>
     </div>
 
-    <div class="adm" id="adm" hidden></div>
+    <div class="adm" id="adm" hidden>
+      <div id="adm-top"></div>
+      <details id="mgr" hidden>
+        <summary>참여자 관리 (로그인한 캐릭터)</summary>
+        <div id="mgr-body" style="margin-top:10px"></div>
+      </details>
+    </div>
 
     <div id="gridwrap">
       <div id="grid"></div>
@@ -257,15 +265,6 @@ details p{margin:8px 0 0}
       <div id="memo-list"></div>
     </section>
 
-    <details id="mgr" hidden>
-      <summary>참여자 관리 (로그인한 캐릭터)</summary>
-      <div id="mgr-body" style="margin-top:10px"></div>
-    </details>
-
-    <details>
-      <summary>홈 화면에 바로가기 만들기</summary>
-      <p>안드로이드 크롬: 메뉴(⋮) &gt; 앱 설치 또는 홈 화면에 추가. 아이폰: 사파리에서 공유 버튼 &gt; 홈 화면에 추가. PC 크롬, 엣지: 주소창 오른쪽의 설치 아이콘 또는 메뉴 &gt; 앱 설치.</p>
-    </details>
   </div>
 </div>
 
@@ -1386,7 +1385,14 @@ function renderParty(){
 }
 
 /* 드래그 / 탭 교체 */
-let dg=null,suppressClick=false;
+let dg=null,suppressClick=false,scrollTimer=null,scrollDir=0;
+function autoScroll(y){
+  const h=window.innerHeight;
+  scrollDir=y<80?-1:(y>h-80?1:0);
+  if(scrollDir&&!scrollTimer)scrollTimer=setInterval(()=>{window.scrollBy(0,scrollDir*16)},16);
+  if(!scrollDir&&scrollTimer){clearInterval(scrollTimer);scrollTimer=null}
+}
+function stopAutoScroll(){scrollDir=0;if(scrollTimer){clearInterval(scrollTimer);scrollTimer=null}}
 function targetAt(x,y){
   const el=document.elementFromPoint(x,y);if(!el)return null;
   const m=el.closest('.mem[data-n],.wchip[data-n]');
@@ -1439,13 +1445,14 @@ $('partyview').addEventListener('pointermove',e=>{
     document.body.appendChild(gh);dg.ghost=gh;
   }
   dg.ghost.style.left=(e.clientX+12)+'px';dg.ghost.style.top=(e.clientY+12)+'px';
+  autoScroll(e.clientY);
   document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'));
   const t=targetAt(e.clientX,e.clientY);
   if(t&&t.el)t.el.classList.add('dt');
 });
 function endDrag(e,cancel){
   if(!dg||(e&&e.pointerId!==dg.pid))return;
-  const d=dg;dg=null;
+  const d=dg;dg=null;stopAutoScroll();
   document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'));
   if(d.ghost){
     d.ghost.remove();suppressClick=true;setTimeout(()=>{suppressClick=false},0);
@@ -1483,7 +1490,7 @@ function setAdmin(on){
   if(view==='party'){renderParty();renderPartyAdmin()}
 }
 function renderAdmin(){
-  const w=$('adm');
+  const w=$('adm-top');
   if(!admin){
     w.innerHTML='<div class="row" style="margin:0"><input id="ac" type="password" placeholder="관리자 코드" style="width:170px" autocomplete="off"><button data-act="login" style="font-weight:600">확인</button></div><p class="err" id="aerr" style="margin:6px 0 0"></p>';
     return;
