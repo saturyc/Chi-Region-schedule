@@ -14,6 +14,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="레기온 일정표">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script>
+window.__bip=null;
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/[?&]demo(&|=|$)/.test(location.search)){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
+}
+</script>
 <style>
 :root{
   --bg:#f6f6f3;--surface:#ffffff;--surface2:#eeeeea;--text:#1c1d22;--text2:#5b5d66;--text3:#8d909a;
@@ -290,7 +297,7 @@ details p{margin:8px 0 0}
   var appName=isKakao?'카카오톡':isNaver?'네이버 앱':/Instagram/i.test(UA)?'인스타그램':/FBAN|FBAV|FB_IAB/i.test(UA)?'페이스북':/Line\//i.test(UA)?'라인':/DaumApps/i.test(UA)?'다음 앱':'';
   var btn=document.getElementById('install'),panel=document.getElementById('ihint');
   if(!btn||!panel)return;
-  var deferred=null;
+  var deferred=window.__bip||null;
   var standalone=false;
   try{standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){}
   var NAME='레기온 일정표';
@@ -366,10 +373,10 @@ details p{margin:8px 0 0}
 
   /* ---------- PC: 앱 설치 ---------- */
   function pcHtml(){
-    return '<b class="it">앱으로 설치하기</b>'+
+    return '<b class="it">지금은 설치 창을 바로 띄울 수 없습니다</b>'+
+      '<p class="is">이미 설치돼 있거나, 페이지를 연 직후라 브라우저가 아직 준비 중일 수 있습니다. 이미 설치했다면 시작 메뉴·바탕화면 아이콘이나 주소창에 <b>chrome://apps</b>를 입력해 열어 주세요. 아니라면 몇 초 뒤 다시 눌러 보고, 그래도 안 되면 아래 방법을 쓰세요.</p>'+
       '<ol class="is"><li><b>크롬</b>: 주소창 오른쪽의 <b>설치 아이콘(⊕)</b>을 누르세요. 아이콘이 없으면 <b>⋮ 메뉴 → 저장 및 공유 → 바로가기 만들기</b>를 선택하고 <b>창으로 열기</b>에 체크한 뒤 <b>만들기</b>를 누르세요.</li>'+
-      '<li><b>엣지</b>: <b>⋯ 메뉴 → 앱 → 이 사이트를 앱으로 설치</b>를 선택하세요.</li></ol>'+
-      '<p class="is">설치하면 시작 메뉴에 아이콘이 생깁니다. 바탕화면에 두려면 그 아이콘을 바탕화면으로 끌어다 놓으세요. 이미 설치했다면 그 아이콘으로 열어 주세요.</p>';
+      '<li><b>엣지</b>: <b>⋯ 메뉴 → 앱 → 이 사이트를 앱으로 설치</b>를 선택하세요.</li></ol>';
   }
 
   /* ---------- 이벤트 ---------- */
