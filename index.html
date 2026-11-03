@@ -54,7 +54,16 @@ header h1{font-size:19px;font-weight:600;margin:0;flex:1}
 .conn.on i{background:var(--ok)}
 .conn.err i{background:var(--danger)}
 #install{display:none;font-size:12px;min-height:28px;padding:2px 10px;white-space:nowrap}
-#ihint{font-size:13px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin:0 0 10px}
+#ihint{position:relative;font-size:13px;color:var(--text2);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 36px 10px 12px;margin:0 0 10px}
+#ihint p{margin:4px 0 0}
+#ihint .it{display:block;font-size:14px;color:var(--text)}
+#ihint .is{font-size:12px;color:var(--text2)}
+#ihint ol{margin:6px 0 0;padding-left:20px}
+#ihint .ib{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px}
+#ihint .ib button{font-size:13px}
+#ihint .ipri{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+#ihint .ipri:hover{background:var(--accent);filter:brightness(1.08)}
+#ihint .ix{position:absolute;top:4px;right:4px;border:0;background:transparent;font-size:20px;line-height:1;min-height:32px;min-width:32px;padding:0;color:var(--text2)}
 .tabs{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap}
 .tabs button{padding:9px 20px;font-size:15px;font-weight:600;border-width:1.5px;border-style:solid}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
@@ -268,6 +277,175 @@ details p{margin:8px 0 0}
   </div>
 </div>
 
+<script id="install-script">
+(function(){
+  var UA=navigator.userAgent||'';
+  var isKakao=/KAKAOTALK/i.test(UA);
+  var isNaver=/NAVER\(inapp/i.test(UA);
+  var isOtherApp=/DaumApps|Instagram|FBAN|FBAV|FB_IAB|Line\//i.test(UA);
+  var inApp=isKakao||isNaver||isOtherApp;
+  var isIOS=/iPhone|iPad|iPod/i.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  var isAndroid=/Android/i.test(UA);
+  var isMobile=isIOS||isAndroid;
+  var isMac=!isMobile&&(/Mac/i.test(navigator.platform||'')||/Macintosh/i.test(UA));
+  var appName=isKakao?'카카오톡':isNaver?'네이버 앱':/Instagram/i.test(UA)?'인스타그램':/FBAN|FBAV|FB_IAB/i.test(UA)?'페이스북':/Line\//i.test(UA)?'라인':/DaumApps/i.test(UA)?'다음 앱':'';
+  var btn=document.getElementById('install'),panel=document.getElementById('ihint');
+  if(!btn||!panel)return;
+  var deferred=null;
+  var standalone=false;
+  try{standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){}
+  var NAME='레기온 일정표';
+  var goto=function(u){if(window.__goto)window.__goto(u);else location.href=u};
+  var pageUrl=function(){return location.href.split('#')[0]};
+  var rootUrl=function(){try{return new URL('./',location.href).href}catch(e){return location.href}};
+  var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+
+  btn.textContent=isMobile?'앱 설치':'바로가기 만들기';
+  btn.style.display=standalone?'none':'inline-block';
+
+  function show(html){
+    panel.innerHTML='<button class="ix" data-i="close" aria-label="닫기">×</button>'+html;
+    panel.hidden=false;
+  }
+  function hide(){panel.hidden=true}
+  function copyText(t){
+    function fallback(){
+      try{var a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();var ok=document.execCommand('copy');document.body.removeChild(a);return ok}catch(e){return false}
+    }
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(t).then(function(){return true},function(){return fallback()});
+    }catch(e){}
+    return Promise.resolve(fallback());
+  }
+
+  /* ---------- 인앱 브라우저(카카오톡, 네이버 등) ---------- */
+  function inAppHtml(){
+    var browser=isIOS?'사파리':'크롬 같은 기본 브라우저';
+    var h='<b class="it">'+appName+' 안에서는 홈 화면에 추가할 수 없어요</b>';
+    h+='<p>'+browser+'에서 열어야 홈 화면에 추가할 수 있습니다.</p>';
+    var canExt=isKakao||isAndroid;
+    h+='<div class="ib">';
+    if(canExt)h+='<button data-i="ext" class="ipri">기본 브라우저로 열기</button>';
+    h+='<button data-i="copy">주소 복사</button></div>';
+    if(isKakao)h+='<p class="is">열리지 않으면 화면 오른쪽 아래 ⋮ 메뉴에서 <b>다른 브라우저로 열기</b>를 선택하세요.</p>';
+    else h+='<p class="is">'+(canExt?'열리지 않으면 ':'')+'화면 아래 또는 위쪽의 ⋯ 메뉴에서 <b>기본 브라우저로 열기</b>('+(isIOS?'Safari로 열기':'다른 브라우저로 열기')+')를 선택하세요. 메뉴 위치는 앱 버전에 따라 다를 수 있습니다.</p>';
+    h+='<p class="is" id="ix-msg"></p>';
+    return h;
+  }
+  function openExternal(){
+    var u=pageUrl();
+    if(isKakao){goto('kakaotalk://web/openExternal?url='+encodeURIComponent(u));return true}
+    if(isAndroid){
+      var rest=location.host+location.pathname+location.search;
+      var scheme=location.protocol.replace(':','')||'https';
+      goto('intent://'+rest+'#Intent;scheme='+scheme+';action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end');
+      return true;
+    }
+    return false;
+  }
+
+  /* ---------- 모바일 브라우저 ---------- */
+  function iosHtml(){
+    return '<b class="it">홈 화면에 추가하기</b>'+
+      '<ol class="is"><li>화면 아래(아이패드는 위쪽)의 <b>공유 버튼</b>(□↑)을 누르세요.</li><li><b>홈 화면에 추가</b>를 선택하세요.</li><li>오른쪽 위의 <b>추가</b>를 누르세요.</li></ol>'+
+      '<p class="is">아이폰은 보안상 앱이 대신 추가해 줄 수 없어서 직접 눌러야 합니다. 사파리가 아닌 다른 브라우저라면 사파리에서 열어 주세요.</p>';
+  }
+  function androidHtml(){
+    return '<b class="it">홈 화면에 추가하기</b>'+
+      '<ol class="is"><li>브라우저 오른쪽 위의 <b>⋮ 메뉴</b>를 누르세요.</li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 선택하세요.</li></ol>'+
+      '<p class="is">메뉴에 보이지 않으면 크롬이나 삼성 인터넷에서 열어 주세요.</p>';
+  }
+  function runPrompt(){
+    var d=deferred;
+    try{d.prompt()}catch(e){}
+    var choice=d.userChoice||Promise.resolve({});
+    return Promise.resolve(choice).then(function(r){
+      deferred=null;
+      if(r&&r.outcome==='accepted'){btn.style.display='none';show('<b class="it">설치했습니다</b><p class="is">'+(isMobile?'홈 화면에서 '+NAME+' 아이콘을 눌러 열 수 있어요.':'바탕화면이나 시작 메뉴에서 '+NAME+'를 열 수 있어요.')+'</p>')}
+    });
+  }
+
+  /* ---------- PC: 바탕화면 바로가기 ---------- */
+  function shortcutFile(){
+    var url=rootUrl();
+    if(isMac){
+      return {name:NAME+'.webloc',type:'application/octet-stream',ext:'.webloc',
+        body:'<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>URL</key><string>'+esc(url)+'</string></dict></plist>\n'};
+    }
+    return {name:NAME+'.url',type:'application/octet-stream',ext:'.url',body:'[InternetShortcut]\r\nURL='+url+'\r\n'};
+  }
+  function pcDone(how){
+    var h='<b class="it">'+(how==='saved'?'바탕화면 바로가기를 만들었습니다':'바로가기 파일을 받았습니다')+'</b>';
+    if(how==='saved')h+='<p class="is">바탕화면의 <b>'+NAME+'</b> 바로가기를 더블클릭하면 열립니다.</p>';
+    else h+='<p class="is">받은 파일 <b>'+esc(shortcutFile().name)+'</b>을 <b>바탕화면으로 옮기면</b> 바로가기가 됩니다. 브라우저가 위험 파일이라고 알려 주면 <b>유지</b>를 눌러 주세요.</p>';
+    if(deferred)h+='<div class="ib"><button data-i="pwa">앱으로 설치 (별도 창으로 열림)</button></div>';
+    show(h);
+  }
+  function pcShortcut(){
+    var f=shortcutFile();
+    function download(){
+      try{
+        var blob=new Blob([f.body],{type:f.type});
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);a.download=f.name;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        setTimeout(function(){URL.revokeObjectURL(a.href)},4000);
+        pcDone('downloaded');
+      }catch(e){
+        show('<b class="it">바로가기를 만들지 못했습니다</b><p class="is">주소창의 주소 왼쪽 아이콘을 바탕화면으로 끌어다 놓으면 바로가기가 만들어집니다.</p>');
+      }
+    }
+    if(window.showSaveFilePicker){
+      var acc={};acc['application/octet-stream']=[f.ext];
+      return window.showSaveFilePicker({suggestedName:f.name,startIn:'desktop',types:[{description:'인터넷 바로가기',accept:acc}]})
+        .then(function(h){return h.createWritable().then(function(w){return w.write(f.body).then(function(){return w.close()})})})
+        .then(function(){pcDone('saved')},function(e){
+          if(e&&e.name==='AbortError')return;
+          download();
+        });
+    }
+    download();
+    return Promise.resolve();
+  }
+
+  /* ---------- 이벤트 ---------- */
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferred=e;diag()});
+  window.addEventListener('appinstalled',function(){btn.style.display='none';hide()});
+  btn.addEventListener('click',function(){
+    if(inApp){show(inAppHtml());return}
+    if(isMobile){
+      if(deferred)runPrompt();
+      else show(isIOS?iosHtml():androidHtml());
+      return;
+    }
+    pcShortcut();
+  });
+  panel.addEventListener('click',function(e){
+    var b=e.target.closest('button[data-i]');if(!b)return;
+    var a=b.dataset.i;
+    if(a==='close'){hide();try{sessionStorage.setItem('regi_inapp_off','1')}catch(x){}return}
+    if(a==='ext'){if(!openExternal())copyText(pageUrl());return}
+    if(a==='copy'){
+      copyText(pageUrl()).then(function(ok){
+        var m=document.getElementById('ix-msg');
+        if(m)m.textContent=ok?'주소를 복사했습니다. 기본 브라우저를 열고 주소창에 붙여넣으세요.':'복사하지 못했습니다. 주소창의 주소를 직접 복사해 주세요.';
+      });
+      return;
+    }
+    if(a==='pwa'&&deferred)runPrompt();
+  });
+
+  /* 인앱 브라우저에서는 처음부터 안내를 보여 줌 */
+  var dismissed=false;try{dismissed=sessionStorage.getItem('regi_inapp_off')==='1'}catch(e){}
+  if(inApp&&!standalone&&!dismissed)show(inAppHtml());
+
+  /* 확인용 정보 */
+  function diag(){if(typeof window.__installDiag==='function')window.__installDiag()}
+  window.__install={
+    get env(){return {userAgent:UA,kakao:isKakao,naver:isNaver,otherApp:isOtherApp,inApp:inApp,ios:isIOS,android:isAndroid,mobile:isMobile,mac:isMac,standalone:standalone,canPrompt:!!deferred,savePicker:!!window.showSaveFilePicker,rootUrl:rootUrl(),pageUrl:pageUrl()}}
+  };
+})();
+</script>
 <script type="module">
 const FIREBASE_CONFIG={
   apiKey:"AIzaSyAuMPeWHyTvuFmET8QdgplD06qkSGiPxdo",
@@ -1753,20 +1931,6 @@ async function goOnboard(){
 $('ob-go').addEventListener('click',goOnboard);
 $('ob-name').addEventListener('keydown',e=>{if(e.key==='Enter')goOnboard()});
 $('ob-name').addEventListener('input',()=>{$('ob-err').textContent=''});
-let deferredPrompt=null;
-const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-if(!standalone())$('install').style.display='inline-block';
-addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
-addEventListener('appinstalled',()=>{$('install').style.display='none';$('ihint').hidden=true});
-$('install').addEventListener('click',async()=>{
-  if(deferredPrompt){
-    deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;return;
-  }
-  const h=$('ihint');
-  h.textContent=isIOS()?'아이폰은 사파리에서 하단의 공유 버튼을 누른 뒤 "홈 화면에 추가"를 선택하세요.':'브라우저 메뉴(⋮)에서 "앱 설치" 또는 "홈 화면에 추가"를 선택하세요.';
-  h.hidden=!h.hidden;
-});
 addEventListener('online',()=>setConn('on',ad?ad.label:''));
 addEventListener('offline',()=>setConn('err','오프라인'));
 
