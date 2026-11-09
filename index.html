@@ -79,6 +79,11 @@ header h1{font-size:19px;font-weight:600;margin:0;flex:1}
 .seg button.on{background:var(--accent-bg);color:var(--accent-text);font-weight:600}
 .cc{display:inline-flex;align-items:center;gap:4px;border:1.5px solid #378ADD;border-radius:var(--radius);padding:5px 12px;cursor:pointer;background:color-mix(in srgb,#378ADD 16%,transparent)}
 .cc.on{background:#5B3FC4;border-color:#5B3FC4;color:#fff;font-weight:600}
+.cc.on::before{content:"\2713";font-size:12px}
+#crow .cact{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:auto;justify-content:flex-end}
+#crow .cact.wide{flex:1 1 100%;margin-left:0;justify-content:flex-start}
+#crow .cact button,#crow .cact select{font-size:13px;min-height:30px;padding:3px 10px}
+#crow .chint{flex:1 1 100%;font-size:11.5px;line-height:1.45;color:var(--text3);margin:-3px 0 0}
 .lbl{font-size:13px;color:var(--text2)}
 .err{font-size:13px;color:var(--danger);margin:0 0 8px;min-height:0}
 .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -797,6 +802,16 @@ let legacy=[];try{legacy=JSON.parse(ls.get('regi_chars','[]'))||[]}catch(e){lega
 legacy.forEach(n=>known.add(n));
 let legacyPending=legacy.length>0&&ls.get('regi_tc',null)===null;
 let chars=[],ci=0;
+let tabAct={};try{tabAct=JSON.parse(ls.get('regi_tact','{}'))||{}}catch(e){tabAct={}}
+let act=new Set();
+const actives=()=>chars.filter(n=>act.has(n));
+function normAct(){
+  act=new Set([...act].filter(n=>chars.includes(n)));
+  if(!chars.length){act=new Set();return}
+  ci=Math.max(0,Math.min(ci,chars.length-1));
+  if(!act.size)act.add(chars[ci]);
+  if(!act.has(chars[ci])){const a=actives();ci=chars.indexOf(a[a.length-1])}
+}
 let members=new Set(),membersLoaded=false,unsubMb=null,obTab=null;
 const addedAt=new Map();
 let view='me';
@@ -812,7 +827,7 @@ let dataVer=0,recCache=null;
 const dirty=new Map();
 const grid=$('grid');
 const curTab=()=>tabs.find(t=>t.id===tabId);
-const saveChars=()=>{if(tabId){tabChars[tabId]=chars;tabCi[tabId]=ci}ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]))};
+const saveChars=()=>{if(tabId){tabChars[tabId]=chars;tabCi[tabId]=ci;tabAct[tabId]=[...act]}ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tact',JSON.stringify(tabAct));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]))};
 const bump=()=>{dataVer++;recCache=null};
 const jobOf=n=>{const p=profiles.get(n);return p?p.job:null};
 const dn=n=>{const j=jobOf(n);return j?`${n}(${jshort(j)})`:n};
@@ -850,19 +865,27 @@ function renderTabs(){
 }
 function renderChars(){
   const t=curTab();
+  const multi=act.size>1;
   let h=`<span class="lbl">참여 캐릭터${t?' · '+esc(t.title):''}</span>`;
-  chars.forEach((c,i)=>{h+=`<span class="cc${i===ci?' on':''}" data-i="${i}">${esc(dn(c))}</span>`});
+  chars.forEach((c,i)=>{const on=act.has(c);h+=`<span class="cc${on?' on':''}" data-i="${i}" role="button" aria-pressed="${on}">${esc(dn(c))}</span>`});
   if(!chars.length)h+='<span class="lbl">이 탭에서 사용할 캐릭터를 추가하세요</span>';
+  let r='',wide=false;
   if(pendCharDel){
-    h+=`<span class="askt">"${esc(chars[ci])}" 캐릭터를 이 탭에서 삭제할까요? 이 탭의 투표, 메모, 편성에서 빠집니다.</span><button class="danger" data-act="cdel-yes">삭제</button><button data-act="cdel-no">취소</button>`;
+    wide=true;
+    r=`<span class="askt">"${esc(chars[ci])}" 캐릭터를 이 탭에서 삭제할까요? 이 탭의 투표, 메모, 편성에서 빠집니다.</span><button class="danger" data-act="cdel-yes">삭제</button><button data-act="cdel-no">취소</button>`;
   }else if(jobEdit){
-    h+=`<select id="jsel" aria-label="직업 변경">${jobOpts(jobOf(chars[ci]),false)}</select><button data-act="jsave">직업 저장</button><button data-act="jcancel">취소</button>`;
+    wide=true;
+    r=(multi?`<span class="lbl">"${esc(chars[ci])}"</span>`:'')+`<select id="jsel" aria-label="직업 변경">${jobOpts(jobOf(chars[ci]),false)}</select><button data-act="jsave">직업 저장</button><button data-act="jcancel">취소</button>`;
   }else{
-    h+=chars.length<MAXC?'<button id="plus" style="padding:5px 12px">+ 캐릭터 추가</button>':'<span class="lbl">이 탭에서 최대 '+MAXC+'개</span>';
+    r=chars.length<MAXC?'<button id="plus">+ 캐릭터 추가</button>':'<span class="lbl">이 탭에서 최대 '+MAXC+'개</span>';
     if(chars.length){
-      h+='<button data-act="cdel" class="danger" style="padding:5px 12px">캐릭터 삭제</button>';
-      h+='<button data-act="jedit" style="padding:5px 12px">직업 변경</button>';
+      r+='<button data-act="cdel" class="danger">캐릭터 삭제</button>';
+      r+='<button data-act="jedit">직업 변경</button>';
     }
+  }
+  h+=`<span class="cact${wide?' wide':''}">${r}</span>`;
+  if(chars.length){
+    h+='<span class="chint">투표할 캐릭터를 클릭하면 활성화됩니다.'+(multi?' 지금 '+act.size+'개 캐릭터로 동시에 투표되고, 반쪽 색 칸은 일부 캐릭터만 체크된 칸입니다(누르면 모두 체크).':'')+'</span>';
   }
   $('crow').innerHTML=h;
   if(!chars.length&&!pendCharDel)$('addrow').hidden=false;
@@ -879,7 +902,7 @@ function renderMyReset(){
   const w=$('myreset');if(!w)return;
   if(!chars.length){w.innerHTML='';return}
   w.innerHTML=pendMy
-    ?`<span class="askt">"${esc(chars[ci])}"의 이 탭 체크를 지울까요?</span><button class="danger" data-act="my-yes">지우기</button><button data-act="my-no">취소</button>`
+    ?`<span class="askt">${actives().map(n=>'"'+esc(n)+'"').join(', ')}의 이 탭 체크를 지울까요?</span><button class="danger" data-act="my-yes">지우기</button><button data-act="my-no">취소</button>`
     :'<button data-act="my-ask" title="선택한 캐릭터의 체크만 이 탭에서 지웁니다">현재 탭 초기화</button>';
 }
 function renderJobFix(){
@@ -902,7 +925,9 @@ function buildGrid(){
   grid.innerHTML=h;
   refresh();
 }
-function myBits(){return ents.get(chars[ci])}
+const BG=['transparent','linear-gradient(135deg,var(--accent) 50%,transparent 50%)','var(--accent)'];
+function cellState(ab,i){let k=0;ab.forEach(b=>{if(b&&b[i])k++});return !k?0:k===ab.length?2:1}
+const hasDay=(b,d)=>{if(!b)return false;for(let s=VIS0;s<SEND;s++)if(b[idxOf(d,s)])return true;return false};
 function rerender(){
   if(view==='party'){renderParty();if(admin&&!$('pv-leaders').contains(document.activeElement))renderPartyLeaders()}
   else refresh();
@@ -911,7 +936,7 @@ function rerender(){
 function refresh(){
   if(view==='party'){renderParty();return}
   const A=agg();
-  const mb=myBits();
+  const names=actives(),ab=names.map(n=>ents.get(n)||null);
   const pdays=(plan&&plan.parties&&plan.days)?[0,1].map(i=>plan.days[i]!=null&&plan.slots[i]!=null?{d:plan.days[i],s:plan.slots[i],n:i+1}:null).filter(Boolean):[];
   const pset=new Map(pdays.map(x=>[idxOf(x.d,x.s),x.n]));
   grid.querySelectorAll('.t').forEach(t=>t.classList.toggle('pk',pdays.some(x=>x.s===+t.dataset.row)));
@@ -921,7 +946,7 @@ function refresh(){
     el.classList.toggle('pk',!!pk);
     if(pk)el.dataset.pk=String(pk);else delete el.dataset.pk;
     if(view==='me'){
-      el.style.background=mb&&mb[i]?'var(--accent)':'transparent';
+      el.style.background=BG[cellState(ab,i)];
       el.textContent='';el.style.color='';
     }else{
       const c=A.counts[i];
@@ -948,8 +973,10 @@ function refresh(){
   renderDayList(A,rdays);
   if(view==='me'){
     $('best').innerHTML='';
-    const sd=D.filter((_,d)=>{if(!mb)return false;for(let s=VIS0;s<SEND;s++)if(mb[idxOf(d,s)])return true;return false});
-    $('sum').textContent=`${tt} · ${chars[ci]||'캐릭터 없음'} · 선택한 요일: ${sd.length?sd.join(', '):'없음'}`;
+    const dl=b=>{const r=D.filter((_,d)=>hasDay(b,d));return r.length?r.join(', '):'없음'};
+    $('sum').textContent=names.length>1
+      ?`${tt} · `+names.map((n,k)=>`${n}: ${dl(ab[k])}`).join(' / ')
+      :`${tt} · ${names[0]||'캐릭터 없음'} · 선택한 요일: ${dl(ab[0])}`;
   }else{
     $('sum').textContent=`${tt} · 참여 ${A.E.length}명. 칸을 누르거나 올리면 그 시간 가능한 사람이 보입니다.`;
     const namesAt=day=>{const i=idxOf(day.d,day.s);return A.E.filter(o=>o.b[i]).map(o=>o.n)};
@@ -1038,7 +1065,7 @@ function onMembers(list,meta){
   if(meta&&!meta.fromCache){
     const keep=chars.filter(n=>members.has(n)||Date.now()-(addedAt.get(tabId+'\u0000'+n)||0)<8000);
     if(keep.length!==chars.length){
-      chars=keep;ci=Math.max(0,Math.min(ci,chars.length-1));saveChars();
+      chars=keep;ci=Math.max(0,Math.min(ci,chars.length-1));normAct();saveChars();
       renderChars();renderMyReset();syncMemoUI();
     }
   }
@@ -1110,6 +1137,7 @@ function selectTab(id){
   ents=new Map();plan=null;bump();selMove=null;pendClearPlan=false;
   members=new Set();membersLoaded=false;
   chars=tabChars[id]||(tabChars[id]=[]);ci=Math.min(tabCi[id]||0,Math.max(chars.length-1,0));
+  act=new Set(tabAct[id]||[]);normAct();
   pendReset=null;pendTabDel=false;status='';pendMy=false;pendCharDel=false;jobEdit=false;
   renderTabs();renderChars();renderMyReset();renderJobFix();buildGrid();
   unsubMb=ad.subscribeMembers(id,onMembers);
@@ -1147,20 +1175,22 @@ function onTabs(list,meta){
 
 /* ---------- 체크판 입력 ---------- */
 function setCell(el,v){
-  const name=chars[ci];
-  if(!name)return;
-  let b=ents.get(name);
-  if(!b){b=new Uint8Array(N);ents.set(name,b)}
+  const names=actives();
+  if(!names.length)return;
   const i=+el.dataset.i;
-  b[i]=v?1:0;
-  markDirty(name);
-  el.style.background=v?'var(--accent)':'transparent';
+  names.forEach(name=>{
+    let b=ents.get(name);
+    if(!b){b=new Uint8Array(N);ents.set(name,b)}
+    b[i]=v?1:0;
+    markDirty(name);
+  });
+  el.style.background=BG[v?2:0];
 }
 function cellAt(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
   return el&&el.classList&&el.classList.contains('c')&&grid.contains(el)?el:null;
 }
-function curVal(el){const b=ents.get(chars[ci]);return !!(b&&b[+el.dataset.i])}
+function curVal(el){const i=+el.dataset.i,ns=actives();return ns.length>0&&ns.every(n=>{const b=ents.get(n);return !!(b&&b[i])})}
 grid.addEventListener('pointerdown',e=>{
   if(view!=='me')return;
   const el=e.target.closest('.c');if(!el)return;
@@ -1187,19 +1217,19 @@ grid.addEventListener('click',e=>{
   const h=e.target.closest('.h[data-col]'),t=e.target.closest('.t'),c=e.target.closest('.c');
   if(view==='all'){if(c)showWho(+c.dataset.i);return}
   const [a,b]=bounds();
-  const name=chars[ci];
-  if(!name){if(h||t)$('cerr').textContent='이 탭에서 사용할 캐릭터를 먼저 추가하세요.';return}
-  const ensure=()=>{let x=ents.get(name);if(!x){x=new Uint8Array(N);ents.set(name,x)}return x};
+  const names=actives();
+  if(!names.length){if(h||t)$('cerr').textContent='이 탭에서 사용할 캐릭터를 먼저 추가하세요.';return}
+  const ensure=name=>{let x=ents.get(name);if(!x){x=new Uint8Array(N);ents.set(name,x)}return x};
   if(h){
-    const d=+h.dataset.col,x=ensure();let all=true;
-    for(let s=a;s<b;s++)if(!x[idxOf(d,s)])all=false;
-    for(let s=a;s<b;s++)x[idxOf(d,s)]=all?0:1;
-    markDirty(name);refresh();
+    const d=+h.dataset.col,xs=names.map(ensure);let all=true;
+    xs.forEach(x=>{for(let s=a;s<b;s++)if(!x[idxOf(d,s)])all=false});
+    xs.forEach(x=>{for(let s=a;s<b;s++)x[idxOf(d,s)]=all?0:1});
+    names.forEach(markDirty);refresh();
   }else if(t){
-    const s=+t.dataset.row,x=ensure();let all=true;
-    for(let d=0;d<7;d++)if(!x[idxOf(d,s)])all=false;
-    for(let d=0;d<7;d++)x[idxOf(d,s)]=all?0:1;
-    markDirty(name);refresh();
+    const s=+t.dataset.row,xs=names.map(ensure);let all=true;
+    xs.forEach(x=>{for(let d=0;d<7;d++)if(!x[idxOf(d,s)])all=false});
+    xs.forEach(x=>{for(let d=0;d<7;d++)x[idxOf(d,s)]=all?0:1});
+    names.forEach(markDirty);refresh();
   }
 });
 
@@ -1233,7 +1263,10 @@ async function deleteChar(){
   const name=chars[ci];
   try{await purgeCharTab(name,tabId)}
   catch(e){pendCharDel=false;renderChars();$('cerr').textContent='삭제하지 못했습니다. 연결을 확인하고 다시 시도하세요.';return}
-  chars.splice(ci,1);ci=Math.max(0,Math.min(ci,chars.length-1));saveChars();
+  /* 서버 동기화(onMembers)가 삭제 도중 chars를 먼저 정리할 수 있으므로 위치가 아니라 이름으로 뺀다 */
+  const at=chars.indexOf(name);
+  chars=chars.filter(c=>c!==name);act.delete(name);
+  ci=Math.max(0,Math.min(at<0?ci:at,chars.length-1));normAct();saveChars();
   ents.delete(name);bump();pendCharDel=false;pendMy=false;
   renderChars();renderMyReset();rerender();syncMemoUI();renderJobFix();
 }
@@ -1261,7 +1294,13 @@ $('crow').addEventListener('click',async e=>{
     return;
   }
   const c=e.target.closest('.cc');
-  if(c){ci=+c.dataset.i;pendMy=false;pendCharDel=false;jobEdit=false;saveChars();renderChars();renderMyReset();rerender();syncMemoUI()}
+  if(c){
+    const prev=chars[ci],n=chars[+c.dataset.i];
+    if(act.has(n)){if(act.size>1){act.delete(n);normAct()}}
+    else{act.add(n);ci=+c.dataset.i}
+    pendMy=false;pendCharDel=false;jobEdit=false;saveChars();renderChars();renderMyReset();rerender();
+    if(chars[ci]!==prev)syncMemoUI();
+  }
 });
 $('jobfix').addEventListener('click',async e=>{
   const b=e.target.closest('button[data-jf]');if(!b)return;
@@ -1276,9 +1315,8 @@ $('myreset').addEventListener('click',e=>{
   if(act==='my-ask'){pendMy=true;renderMyReset();return}
   if(act==='my-no'){pendMy=false;renderMyReset();return}
   if(act==='my-yes'){
-    const name=chars[ci],bits=ents.get(name);
     pendMy=false;
-    if(bits&&anyBit(bits)){bits.fill(0);markDirty(name)}
+    actives().forEach(name=>{const bits=ents.get(name);if(bits&&anyBit(bits)){bits.fill(0);markDirty(name)}});
     renderMyReset();refresh();
   }
 });
@@ -1309,8 +1347,9 @@ async function registerChar(name,job,tid){
   try{await adReady;await ad.saveMember(tid,name)}
   catch(e){return '등록하지 못했습니다. 연결을 확인하고 다시 시도하세요.'}
   list.push(name);known.add(name);addedAt.set(tid+'\u0000'+name,Date.now());
-  tabCi[tid]=list.length-1;
-  if(tid===tabId){chars=list;ci=list.length-1}
+  tabCi[tid]=list.length-1;tabAct[tid]=[name];
+  if(tid===tabId){chars=list;ci=list.length-1;act=new Set([name])}
+  ls.set('regi_tact',JSON.stringify(tabAct));
   ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]));
   return '';
 }
@@ -1876,7 +1915,7 @@ $('mgr-body').addEventListener('click',async e=>{
     if(a==='del-yes'){
       mgrDel=null;
       await purgeCharTab(n,tabId);
-      if(chars.includes(n)){chars=chars.filter(c=>c!==n);ci=Math.max(0,Math.min(ci,chars.length-1));saveChars();syncMemoUI()}
+      if(chars.includes(n)){chars=chars.filter(c=>c!==n);ci=Math.max(0,Math.min(ci,chars.length-1));normAct();saveChars();syncMemoUI()}
       mgrMsg=`"${n}" 캐릭터를 이 탭에서 삭제했습니다.`;renderMgr();renderChars();renderMyReset();return;
     }
     if(a==='save'){
@@ -1921,7 +1960,9 @@ async function renameChar(old,nv,job,oldProf){
   await ad.deleteProfile(old);
   Object.keys(tabChars).forEach(k=>{tabChars[k]=[...new Set(tabChars[k].map(c=>c===old?nv:c))]});
   if(known.has(old)){known.delete(old);known.add(nv)}
-  chars=tabChars[tabId]||chars;ci=Math.max(0,Math.min(ci,chars.length-1));saveChars();renderChars();
+  Object.keys(tabAct).forEach(k=>{tabAct[k]=[...new Set((tabAct[k]||[]).map(c=>c===old?nv:c))]});
+  act=new Set([...act].map(c=>c===old?nv:c));
+  chars=tabChars[tabId]||chars;ci=Math.max(0,Math.min(ci,chars.length-1));normAct();saveChars();renderChars();
 }
 
 /* ---------- 메모 ---------- */
@@ -1976,7 +2017,7 @@ $('memo-list').addEventListener('click',async e=>{
   const act=b.dataset.act,n=b.dataset.n;
   if(act==='m-edit'){
     const i=chars.indexOf(n);
-    if(i>=0){ci=i;saveChars();renderChars();renderMyReset();rerender();syncMemoUI();$('memo-in').focus();$('memo-in').scrollIntoView({block:'center',behavior:'smooth'})}
+    if(i>=0){ci=i;act=new Set([chars[i]]);saveChars();renderChars();renderMyReset();rerender();syncMemoUI();$('memo-in').focus();$('memo-in').scrollIntoView({block:'center',behavior:'smooth'})}
     return;
   }
   if(act==='m-del'){pendMemoDel=n;renderMemos();return}
