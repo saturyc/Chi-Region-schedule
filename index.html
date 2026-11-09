@@ -144,7 +144,7 @@ details{margin:22px 0 0;font-size:13px;color:var(--text2)}
 details summary{cursor:pointer}
 details p{margin:8px 0 0}
 [hidden]{display:none!important}
-/* 파티 편성 */
+/* 포스 편성 */
 .pv-sec{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 0 10px}
 .pv-sec h3{font-size:14px;font-weight:600;margin:0 0 8px}
 .pv-sec h3 span{font-weight:400;font-size:12px;color:var(--text2);margin-left:4px}
@@ -193,6 +193,33 @@ details p{margin:8px 0 0}
 .nvn{display:inline-block;background:var(--surface2);border-radius:6px;padding:0 7px;margin:0 2px}
 .nvn.mine{font-weight:700;color:var(--accent-text)}
 .qa{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px}
+
+.copybar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:0 0 8px}
+#pv-copy{font-weight:600;background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent)}
+.pgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:42px;padding:5px 3px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface2);font-size:13px;line-height:1.25;word-break:break-all;cursor:pointer}
+.cell.blank{background:transparent;border-style:dashed;border-color:var(--border);cursor:default}
+.cell.mine{border-color:var(--accent)}
+.cell.mine .cn{font-weight:700;color:var(--accent-text)}
+.cell.sel,.cell.dt{background:var(--accent-bg);border-color:var(--accent)}
+.cell .ld{color:var(--accent-text);margin-right:1px}
+.cell .grip{position:absolute;top:0;left:0;padding:2px 5px 4px 3px;font-size:11px}
+.cell small{font-size:10px;line-height:1.2;margin-top:2px}
+.cell small.cb{color:var(--danger-text);background:var(--danger-bg);border-radius:4px;padding:0 4px}
+.cell small.cb2{color:var(--text3)}
+.dl{margin:18px 0 0}
+.dl h3{font-size:14px;font-weight:600;margin:0 0 4px}
+.dl .dsub{font-size:12px;color:var(--text3);margin:0 0 8px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.dcell{border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);padding:8px 10px}
+.dcell.best{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.dcell .dh{display:flex;align-items:baseline;gap:6px;font-weight:600;font-size:14px;padding:0 0 6px;margin:0 0 6px;border-bottom:1px solid var(--border)}
+.dcell .dh small{font-weight:400;color:var(--text2);font-size:12px}
+.dcell .dh em{margin-left:auto;font-style:normal;font-size:11px;font-weight:600;color:var(--accent-text)}
+.dcell .dn{display:flex;flex-wrap:wrap;gap:4px 5px;font-size:13px}
+.dcell .dn span{background:var(--surface2);border-radius:6px;padding:1px 7px}
+.dcell .dn span.mine{font-weight:700;color:var(--accent-text)}
+.dcell .none{font-size:12px;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -233,7 +260,7 @@ details p{margin:8px 0 0}
     <p class="err" id="cerr"></p>
 
     <div class="row">
-      <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button><button data-v="party">파티 편성</button></div>
+      <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button><button data-v="party">포스 편성</button></div>
       <span class="lg" id="lg" hidden><i style="background:color-mix(in srgb,var(--ok) 15%,transparent)"></i>적음<i style="background:var(--ok)"></i>많음</span>
       <div class="right">
         <span id="myreset" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap"></span>
@@ -255,20 +282,22 @@ details p{margin:8px 0 0}
       <div class="savebar" id="savebar"></div>
       <p class="sum" id="sum"></p>
       <div id="best"></div>
+      <div id="dlist"></div>
     </div>
 
     <div id="partyview" hidden>
       <div id="pv-top"></div>
       <div id="pv-admin" hidden>
-        <div class="pv-sec"><h3>요일 지정 <span>자동은 추천 요일을 따릅니다</span></h3><div class="lead"><label>1파티 요일<select id="pv-d0"></select></label><label>2파티 요일<select id="pv-d1"></select></label></div></div>
-        <div class="pv-sec"><h3>편성 규칙 <span>모든 탭 공통 · 체크를 풀면 고려하지 않음</span></h3><div class="rgrid" id="pv-rules"></div><p class="hintline">조건을 못 맞춰도 오류 없이 가능한 만큼 채우고, 못 맞춘 조건은 결과에 표시합니다. 같은 사람의 캐릭터는 서로 다른 파티에 넣습니다. 근접딜러(살성·권성)와 원거리딜러(궁성·정령성·마도성)는 묶어서 세고, 묶음 안에서는 가능한 사람 중 무작위로 편성합니다. 파티 편성을 다시 누르면 무작위 선택이 새로 바뀝니다.</p></div>
+        <div class="pv-sec"><h3>요일 지정 <span>자동은 추천 요일을 따릅니다</span></h3><div class="lead"><label>1포스 요일<select id="pv-d0"></select></label><label>2포스 요일<select id="pv-d1"></select></label></div></div>
+        <div class="pv-sec"><h3>편성 규칙 <span>모든 탭 공통 · 체크를 풀면 고려하지 않음</span></h3><div class="rgrid" id="pv-rules"></div><p class="hintline">조건을 못 맞춰도 오류 없이 가능한 만큼 채우고, 못 맞춘 조건은 결과에 표시합니다. 같은 사람의 캐릭터는 서로 다른 포스에 넣습니다. 근접딜러(살성·권성)와 원거리딜러(궁성·정령성·마도성)는 묶어서 세고, 묶음 안에서는 가능한 사람 중 무작위로 편성합니다. 포스 편성을 다시 누르면 무작위 선택이 새로 바뀝니다.</p></div>
         <div class="pv-sec"><h3>포스장 <span>해당 요일에 투표한 캐릭터 중에서</span></h3><div class="lead" id="pv-leaders"></div></div>
         <div class="pbar" id="pv-btns"></div>
       </div>
       <div id="pv-msgwrap" class="pmsg" style="margin:0 0 8px"></div>
+      <div class="copybar" id="pv-copybar" hidden><span id="pv-copymsg" class="pmsg"></span><button id="pv-copy">복사하기</button></div>
       <div class="parties" id="pv-cards"></div>
       <div class="wait" id="pv-wait"></div>
-      <p class="hintline" id="pv-hint" hidden>끌어서 옮기거나, 사람을 눌러 선택한 뒤 바꿀 사람(또는 파티, 대기 칸)을 누르세요.</p>
+      <p class="hintline" id="pv-hint" hidden>끌어서 옮기거나, 사람을 눌러 선택한 뒤 바꿀 사람(또는 포스, 대기 칸)을 누르세요.</p>
     </div>
 
     <section class="memosec" id="memosec">
@@ -445,7 +474,7 @@ const groupOf=job=>GROUPS.find(g=>g.jobs.includes(job));
 const ADMIN_CODE='0000';
 const MAXC=5;
 const RAID=10;
-const VIS0=18;
+let VIS0=36;
 const N=343;
 const BASE=336;
 const SEND=49;
@@ -772,10 +801,10 @@ let members=new Set(),membersLoaded=false,unsubMb=null,obTab=null;
 const addedAt=new Map();
 let view='me';
 let paint=null,dragging=false,touchStart=null;
-let admin=ss.get('regi_admin')==='1';
+let admin=ls.get('regi_admin','')==='1'||ss.get('regi_admin')==='1';
 let pendReset=null,pendTabDel=false,status='',tnVal='',seeded=false,pendMy=false,pendCharDel=false,jobEdit=false;
 let profiles=new Map(),profilesLoaded=false;
-const defaultRules=()=>{const r={};GROUPS.forEach(g=>r[g.key]={on:false,mode:'min',n:1});r['수호성']={on:true,mode:'min',n:1};r['치유성']={on:true,mode:'max',n:2};r['검성']={on:true,mode:'min',n:1};return r};
+const defaultRules=()=>{const r={};GROUPS.forEach(g=>r[g.key]={on:false,mode:'exact',n:1});r['수호성']={on:true,mode:'min',n:1};r['치유성']={on:true,mode:'max',n:2};r['검성']={on:true,mode:'min',n:1};return r};
 let rules=defaultRules();
 let plan=null,planSaving=null,planTimer=null,setTimer=null,setSaving=false;
 let selMove=null,pendClearPlan=false,mgrEdit=null,mgrDel=null,mgrMsg='';
@@ -858,7 +887,7 @@ function renderJobFix(){
   const need=profilesLoaded?chars.filter(c=>!profiles.has(c)):[];
   if(!need.length){w.hidden=true;return}
   w.hidden=false;
-  w.innerHTML='<h2>직업을 등록해 주세요</h2><p>직업이 등록되지 않은 캐릭터가 있습니다. 파티 편성에 쓰이니 직업을 선택해 주세요.</p>'+
+  w.innerHTML='<h2>직업을 등록해 주세요</h2><p>직업이 등록되지 않은 캐릭터가 있습니다. 포스 편성에 쓰이니 직업을 선택해 주세요.</p>'+
     need.map(c=>`<div class="row" data-c="${esc(c)}"><b style="min-width:90px">${esc(c)}</b><select aria-label="${esc(c)} 직업">${jobOpts('')}</select><button data-jf="1">저장</button></div>`).join('')+'<p class="err" id="jf-err" style="margin:0"></p>';
 }
 function buildGrid(){
@@ -916,6 +945,7 @@ function refresh(){
   });
   const tt=curTab()?curTab().title:'';
   renderNov();
+  renderDayList(A,rdays);
   if(view==='me'){
     $('best').innerHTML='';
     const sd=D.filter((_,d)=>{if(!mb)return false;for(let s=VIS0;s<SEND;s++)if(mb[idxOf(d,s)])return true;return false});
@@ -931,6 +961,16 @@ function refresh(){
       `<div class="box"><p>${i+1}위 ${D[x.d]}요일 · ${x.c}명 <span>· 추천 시간 ${lab(x.s)} · 편성 ${rec.res.members[i].length}/${RAID}</span></p><div class="chips">${lists[i].map(nm).join('')}</div></div>`
     ).join(''):'<div class="box"><p>아직 투표한 사람이 없습니다</p></div>')+(dups.size?'<p class="dupnote">배경색이 같은 이름은 두 요일 모두 가능한 캐릭터입니다. 어느 쪽에 넣어도 됩니다.</p>':'');
   }
+}
+function renderDayList(A,rdays){
+  const w=$('dlist');if(!w)return;
+  if(view!=='all'){w.innerHTML='';return}
+  const cells=D.map((d,i)=>{
+    const v=A.days[i].v.slice().sort((x,y)=>x.localeCompare(y,'ko'));
+    const rank=rdays.findIndex(x=>x.d===i);
+    return `<div class="dcell${rank===0?' best':''}"><div class="dh">${d}요일<small>${v.length}명</small>${rank>=0?`<em>${rank+1}위</em>`:''}</div>${v.length?`<div class="dn">${v.map(n=>`<span${chars.includes(n)?' class="mine"':''}>${esc(n)}</span>`).join('')}</div>`:'<div class="none">투표한 사람 없음</div>'}</div>`;
+  }).join('');
+  w.innerHTML=`<div class="dl"><h3>요일별 투표 인원</h3><p class="dsub">${VIS0===36?'':lab(VIS0)+'~24:00 · '}해당 요일에 1칸 이상 체크한 캐릭터입니다.</p><div class="dgrid">${cells}</div></div>`;
 }
 function renderNov(){
   const w=$('nov');if(!w)return;
@@ -979,7 +1019,7 @@ async function flush(k){
     d.timer=setTimeout(()=>flush(k),4000);
   }
 }
-function flushAll(){[...dirty.keys()].forEach(k=>flush(k));flushPlan()}
+function flushAll(){[...dirty.keys()].forEach(k=>flush(k));flushPlan();flushSettings()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushAll()});
 addEventListener('pagehide',flushAll);
 function clearDirtyName(name){[...dirty.entries()].forEach(([k,d])=>{if(d.name===name){clearTimeout(d.timer);dirty.delete(k)}})}
@@ -1014,18 +1054,28 @@ function parseRules(json){
   const r=defaultRules();
   try{
     const o=JSON.parse(json);
-    GROUPS.forEach(g=>{const x=o&&o[g.key];if(x)r[g.key]={on:!!x.on,mode:['min','max','exact'].includes(x.mode)?x.mode:'min',n:Math.max(0,Math.min(10,parseInt(x.n)||0))}});
+    GROUPS.forEach(g=>{const x=o&&o[g.key];if(x)r[g.key]={on:!!x.on,mode:['min','max','exact'].includes(x.mode)?x.mode:'exact',n:Math.max(0,Math.min(10,parseInt(x.n)||0))}});
   }catch(e){}
   return r;
 }
+function parseVF(json){
+  try{const o=JSON.parse(json),v=o&&o._vf;if(Number.isInteger(v)&&v>=18&&v<=36)return v}catch(e){}
+  return 36;
+}
 function onSettings(json){
   if(setSaving)return;
-  if(json)rules=parseRules(json);
+  let rebuilt=false;
+  if(json){
+    rules=parseRules(json);
+    const vf=parseVF(json);
+    if(vf!==VIS0){VIS0=vf;rebuilt=true}
+  }
   bump();
+  if(rebuilt){buildGrid();if(admin&&!$('adm').hidden)renderAdmin()}
   if(view==='party'){if(!$('pv-rules').contains(document.activeElement))buildRulesGrid();renderParty()}
   else if(view==='all')refresh();
 }
-function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],parties:null,rj:''}}
+function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],parties:null,rj:'',seed:0}}
 function parsePlan(json){
   if(!json)return null;
   try{
@@ -1039,6 +1089,7 @@ function parsePlan(json){
       p.slots=[0,1].map(i=>Number.isInteger(o.slots&&o.slots[i])?o.slots[i]:null);
     }
     p.rj=typeof o.rj==='string'?o.rj:'';
+    p.seed=Number.isInteger(o.seed)?o.seed:0;
     return p;
   }catch(e){return null}
 }
@@ -1302,7 +1353,7 @@ $('vseg').addEventListener('click',e=>{
   setView(v);
 });
 
-/* ---------- 파티 편성 화면 ---------- */
+/* ---------- 포스 편성 화면 ---------- */
 const canEdit=()=>admin&&plan&&plan.parties&&!plan.confirmed;
 function activeDays(){
   if(plan&&plan.parties&&plan.days){
@@ -1317,7 +1368,7 @@ function buildRulesGrid(){
   w.innerHTML=GROUPS.map(g=>{
     const r=rules[g.key];
     return `<div class="rr${r.on?'':' off'}" data-j="${g.key}"><label><input type="checkbox" ${r.on?'checked':''} aria-label="${g.label} 조건 사용"> ${g.label}</label>
-      <select aria-label="${g.label} 조건 종류"><option value="min"${r.mode==='min'?' selected':''}>최소</option><option value="max"${r.mode==='max'?' selected':''}>최대</option><option value="exact"${r.mode==='exact'?' selected':''}>정확히</option></select>
+      <select aria-label="${g.label} 조건 종류"><option value="exact"${r.mode==='exact'?' selected':''}>정확히</option><option value="max"${r.mode==='max'?' selected':''}>최대</option><option value="min"${r.mode==='min'?' selected':''}>최소</option></select>
       <input type="number" min="0" max="10" value="${r.n}" aria-label="${g.label} 인원"> <span class="lbl">명</span>${g.note?`<span class="rnote">${g.note} 무작위 편성</span>`:''}</div>`;
   }).join('');
 }
@@ -1330,12 +1381,16 @@ $('pv-rules').addEventListener('input',e=>{
   bump();saveRulesSoon();
   renderParty();renderPartyLeaders();
 });
+let setPending=false;
 function saveRulesSoon(){
-  clearTimeout(setTimer);setSaving=true;
-  setTimer=setTimeout(async()=>{
-    try{await ad.saveSettings(JSON.stringify(rules))}catch(e){pvMsg('규칙을 저장하지 못했습니다.','err')}
-    setSaving=false;
-  },500);
+  clearTimeout(setTimer);setSaving=true;setPending=true;
+  setTimer=setTimeout(flushSettings,500);
+}
+async function flushSettings(){
+  if(!setPending)return;
+  clearTimeout(setTimer);setPending=false;
+  try{await ad.saveSettings(JSON.stringify(Object.assign({},rules,{_vf:VIS0})))}catch(e){pvMsg('규칙을 저장하지 못했습니다.','err')}
+  setSaving=false;
 }
 function ensurePlan(){if(!plan)plan=newPlan();return plan}
 function savePlanSoon(){
@@ -1380,14 +1435,14 @@ function renderPartyLeaders(){
     const other=p.leaders[1-pi];
     const opts=pool(pi).filter(n=>n!==other);
     const day=days[pi];
-    return `<label>${pi+1}파티 포스장${day?` · ${D[day.d]}요일`:''}<select data-lp="${pi}"><option value="">선택 안 함</option>${opts.map(n=>`<option value="${esc(n)}"${p.leaders[pi]===n?' selected':''}>${esc(dn(n))}</option>`).join('')}</select></label>`;
+    return `<label>${pi+1}포스 포스장${day?` · ${D[day.d]}요일`:''}<select data-lp="${pi}"><option value="">선택 안 함</option>${opts.map(n=>`<option value="${esc(n)}"${p.leaders[pi]===n?' selected':''}>${esc(dn(n))}</option>`).join('')}</select></label>`;
   }).join('');
   void rec;
 }
 function renderPartyBtns(){
   const w=$('pv-btns');if(!w)return;
   const has=!!(plan&&plan.parties);
-  let h='<button id="pv-go">파티 편성</button>';
+  let h='<button id="pv-go">포스 편성</button>';
   if(has)h+=plan.confirmed?'<button data-pa="unlock">확정 해제</button>':'<button data-pa="lock">확정</button>';
   if(has){
     h+=pendClearPlan
@@ -1401,15 +1456,15 @@ $('pv-d1').addEventListener('change',e=>setOverride(1,e.target.value));
 function setOverride(i,v){
   const p=ensurePlan();
   const val=v===''?null:+v;
-  if(val!=null&&p.override[1-i]===val){pvMsg('1파티와 2파티는 서로 다른 요일이어야 합니다.','err');renderPartyAdmin();return}
+  if(val!=null&&p.override[1-i]===val){pvMsg('1포스와 2포스는 서로 다른 요일이어야 합니다.','err');renderPartyAdmin();return}
   p.override[i]=val;bump();savePlanSoon();
-  pvMsg('요일을 바꿨습니다. "파티 편성"을 누르면 반영됩니다.');
+  pvMsg('요일을 바꿨습니다. "포스 편성"을 누르면 반영됩니다.');
   renderParty();renderPartyLeaders();
 }
 $('pv-leaders').addEventListener('change',e=>{
   const s=e.target.closest('select[data-lp]');if(!s)return;
   const p=ensurePlan();p.leaders[+s.dataset.lp]=s.value||null;savePlanSoon();
-  pvMsg('포스장을 바꿨습니다. "파티 편성"을 누르면 반영됩니다.');
+  pvMsg('포스장을 바꿨습니다. "포스 편성"을 누르면 반영됩니다.');
   renderPartyLeaders();renderParty();
 });
 $('pv-btns').addEventListener('click',e=>{
@@ -1439,10 +1494,41 @@ function doCompose(){
   p.slots=[rec.days[0]?rec.days[0].s:null,rec.days[1]?rec.days[1].s:null];
   p.leaders=L;
   p.rj=JSON.stringify(rules);selMove=null;
+  p.seed=1+Math.floor(Math.random()*2147483000);
   bump();savePlanSoon();
   const ev=res.ev;
   pvMsg(ev.tier===1?'편성했습니다. 모든 조건을 충족했습니다.':`편성했습니다. 맞추지 못한 조건 ${ev.viol}건${ev.full?'':`, ${2*RAID-ev.F}명 부족`}.`);
   renderParty();renderPartyAdmin();
+}
+
+/* ---------- 포스 결과 배치: 2줄 x 5칸 ---------- */
+const TANK_JOBS=['수호성','검성'],MELEE_JOBS=['살성','권성'],RANGE_JOBS=['궁성','정령성','마도성'];
+function hashStr(t){let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function layoutForce(names,seed,jobFn){
+  const jf=jobFn||jobOf;
+  const jb=n=>jf(n)||'';
+  const rk=n=>hashStr(String(seed||0)+'|'+n);
+  const byRank=(a,b)=>rk(a)-rk(b)||a.localeCompare(b,'ko');
+  const T=names.filter(n=>TANK_JOBS.includes(jb(n))).sort((a,b)=>TANK_JOBS.indexOf(jb(a))-TANK_JOBS.indexOf(jb(b))||byRank(a,b));
+  const M=names.filter(n=>MELEE_JOBS.includes(jb(n))).sort(byRank);
+  const R=names.filter(n=>RANGE_JOBS.includes(jb(n))).sort(byRank);
+  const H=names.filter(n=>jb(n)==='치유성').sort(byRank);
+  const B=names.filter(n=>jb(n)==='호법성').sort(byRank);
+  const U=names.filter(n=>!jb(n)||![...TANK_JOBS,...MELEE_JOBS,...RANGE_JOBS,'치유성','호법성'].includes(jb(n)));
+  const take=(lists,k)=>{const out=[];for(const L of lists){while(L.length&&out.length<k)out.push(L.shift())}return out};
+  const c1=take([T,M,R],2);
+  const c5=take([H,B],2);
+  const dealers=M.concat(R,U).sort(byRank);
+  M.length=0;R.length=0;U.length=0;
+  const mids=take([dealers,B,T,H],6);
+  const cells=new Array(10).fill(null);
+  const P1=[0,5],P5=[4,9],PM=[1,2,3,6,7,8];
+  c1.forEach((n,i)=>cells[P1[i]]=n);
+  c5.forEach((n,i)=>cells[P5[i]]=n);
+  mids.forEach((n,i)=>cells[PM[i]]=n);
+  const rest=take([dealers,B,T,H],10);
+  [...P1,...P5].forEach(i=>{if(cells[i]==null&&rest.length)cells[i]=rest.shift()});
+  return [cells.slice(0,5),cells.slice(5,10)];
 }
 function getRec_E(){return agg().E}
 function cardChecks(pi,members){
@@ -1456,68 +1542,98 @@ function cardChecks(pi,members){
   });
   const seen=new Map();
   members.forEach(n=>{const o=profiles.get(n);if(o&&o.owner)seen.set(o.owner,(seen.get(o.owner)||[]).concat(n))});
-  [...seen.values()].filter(a=>a.length>1).forEach(a=>out.push(`<div class="chk bad">⚠ 같은 사람의 캐릭터가 같은 파티에 있음: ${esc(a.map(dn).join(', '))}</div>`));
+  [...seen.values()].filter(a=>a.length>1).forEach(a=>out.push(`<div class="chk bad">⚠ 같은 사람의 캐릭터가 같은 포스에 있음: ${esc(a.map(dn).join(', '))}</div>`));
   return out.join('');
 }
+function forceCells(pi,editable,day,other){
+  const L=plan.leaders[pi];
+  const rows=layoutForce(plan.parties[pi],plan.seed||0);
+  return '<div class="pgrid">'+rows.map(r=>r.map(n=>{
+    if(!n)return '<div class="cell blank"></div>';
+    const mine=chars.includes(n);
+    const ld=L===n?'<span class="ld">★</span>':'';
+    if(!editable&&!admin)return `<div class="cell${mine?' mine':''}" data-n="${esc(n)}" style="cursor:default"><span class="cn">${ld}${esc(n)}</span></div>`;
+    const av=availAt(n,day),both=other&&av&&availAt(n,other);
+    return `<div class="cell${mine?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="${pi}">${editable?'<span class="grip" data-drag="1" title="끌어서 이동">⋮</span>':''}<span class="cn">${ld}${esc(n)}</span>${av?'':'<small class="cb">투표 없음</small>'}${both?'<small class="cb2">양쪽 가능</small>':''}</div>`;
+  }).join('')).join('')+'</div>';
+}
+function planText(){
+  if(!(plan&&plan.parties))return '';
+  const days=activeDays();
+  const out=[];
+  [0,1].forEach(pi=>{
+    const day=days[pi];if(!day)return;
+    const rows=layoutForce(plan.parties[pi],plan.seed||0).map(r=>r.filter(Boolean).join(' ')).filter(Boolean);
+    out.push([`${pi+1}포스 ${D[day.d]}요일 ${lab(day.s)}`].concat(rows).join('\n'));
+  });
+  return out.join('\n\n');
+}
+async function copyPlan(){
+  const t=planText();
+  const m=$('pv-copymsg');
+  if(!t){m.textContent='복사할 편성이 없습니다.';return}
+  let ok=false;
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(t);ok=true}}catch(e){}
+  if(!ok){
+    try{
+      const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(a);a.select();a.setSelectionRange(0,t.length);ok=document.execCommand('copy');document.body.removeChild(a);
+    }catch(e){ok=false}
+  }
+  m.textContent=ok?'복사했습니다':'복사하지 못했습니다. 길게 눌러 직접 복사하세요.';
+  m.className='pmsg'+(ok?'':' err');
+  clearTimeout(copyPlan.t);copyPlan.t=setTimeout(()=>{m.textContent=''},2500);
+}
+$('pv-copy').addEventListener('click',copyPlan);
 function renderParty(){
   if(view!=='party')return;
+  if(dg&&Date.now()-dg.t0<20000){pendParty=true;return}
   const rec=getRec();
   const composed=!!(plan&&plan.parties);
   const days=activeDays();
   const editable=canEdit();
+  $('pv-copybar').hidden=!composed;
   if(!admin){
     $('pv-top').innerHTML='';
     $('pv-wait').hidden=true;$('pv-wait').innerHTML='';$('pv-hint').hidden=true;$('pv-msgwrap').textContent='';
     if(!composed){
-      $('pv-cards').innerHTML='<div class="pcard" style="grid-column:1/-1"><p class="cand" style="margin:0">아직 파티 편성이 되지 않았습니다. 관리자가 편성하면 이곳에 결과가 표시됩니다.</p></div>';
+      $('pv-cards').innerHTML='<div class="pcard" style="grid-column:1/-1"><p class="cand" style="margin:0">아직 포스 편성이 되지 않았습니다. 관리자가 편성하면 이곳에 결과가 표시됩니다.</p></div>';
       return;
     }
     const badge=plan.confirmed?'<span class="lock">확정</span>':'<span class="lock draft">조정 중</span>';
     $('pv-cards').innerHTML=[0,1].map(pi=>{
       const day=days[pi];
       if(!day)return '';
-      const mem=plan.parties[pi].slice().sort((x,y)=>{
-        const lx=plan.leaders[pi]===x?0:1,ly=plan.leaders[pi]===y?0:1;
-        return lx-ly||JOBS.indexOf(jobOf(x)||'')-JOBS.indexOf(jobOf(y)||'')||x.localeCompare(y,'ko');
-      });
-      const rows=mem.map(n=>`<div class="mem${chars.includes(n)?' mine':''}" data-n="${esc(n)}" style="cursor:default"><span class="mn">${plan.leaders[pi]===n?'★ ':''}${esc(dn(n))}</span></div>`).join('');
-      return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}파티</b><span>${D[day.d]}요일 ${lab(day.s)}</span>${badge}<span class="cnt">${mem.length}명</span></div>${rows}</div>`;
+      const n=plan.parties[pi].length;
+      return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}포스</b><span>${D[day.d]}요일 ${lab(day.s)}</span>${badge}<span class="cnt">${n}명</span></div>${forceCells(pi,false,day,null)}</div>`;
     }).join('');
     return;
   }
   // 상단 안내
   let top='';
   if(rec.days.length){
-    top+=`<p class="plan" style="margin:0 0 8px">추천 요일: ${rec.days.map((x,i)=>`${i+1}파티 ${D[x.d]}요일 ${lab(x.s)} (가능 ${x.c}명)`).join(' · ')}</p>`;
+    top+=`<p class="plan" style="margin:0 0 8px">추천 요일: ${rec.days.map((x,i)=>`${i+1}포스 ${D[x.d]}요일 ${lab(x.s)} (가능 ${x.c}명)`).join(' · ')}</p>`;
     top+=recBanner(rec).replace('class="plan"','class="plan" style="margin:0 0 10px"');
   }else top+='<p class="plan" style="margin:0 0 10px">아직 투표한 사람이 없습니다</p>';
   if(composed){
     const same=plan.days&&rec.days.length===days.length&&rec.days.every((x,i)=>days[i]&&x.d===days[i].d&&x.s===days[i].s);
-    if(!same)top+='<div class="warnline">현재 추천 요일이 편성한 요일과 다릅니다. 관리자가 "파티 편성"을 다시 누르면 새 추천으로 편성됩니다.</div>';
+    if(!same)top+='<div class="warnline">현재 추천 요일이 편성한 요일과 다릅니다. 관리자가 "포스 편성"을 다시 누르면 새 추천으로 편성됩니다.</div>';
     if(plan.rj&&plan.rj!==JSON.stringify(rules))top+='<div class="warnline">편성 규칙이 편성 이후에 바뀌었습니다. 다시 편성하면 반영됩니다.</div>';
   }
   $('pv-top').innerHTML=top;
   // 카드
   const cards=[0,1].map(pi=>{
     const day=days[pi];
-    if(!day)return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}파티</b><span>가능한 요일 없음</span></div><p class="cand" style="margin:0">투표가 더 필요합니다.</p></div>`;
+    if(!day)return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}포스</b><span>가능한 요일 없음</span></div><p class="cand" style="margin:0">투표가 더 필요합니다.</p></div>`;
     if(!composed){
       const cand=[];ents.forEach((b,n)=>{if(b[idxOf(day.d,day.s)])cand.push(n)});
       cand.sort((x,y)=>x.localeCompare(y,'ko'));
-      return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}파티</b><span>${D[day.d]}요일 ${lab(day.s)}</span><span class="cnt">가능 ${cand.length}명</span></div><p class="cand" style="margin:0 0 6px">편성 전입니다. 이 시간에 가능한 캐릭터:</p><div class="chips">${cand.map(n=>`<span class="nm" style="background:var(--surface2)">${esc(dn(n))}</span>`).join('')}</div></div>`;
+      return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}포스</b><span>${D[day.d]}요일 ${lab(day.s)}</span><span class="cnt">가능 ${cand.length}명</span></div><p class="cand" style="margin:0 0 6px">편성 전입니다. 이 시간에 가능한 캐릭터:</p><div class="chips">${cand.map(n=>`<span class="nm" style="background:var(--surface2)">${esc(dn(n))}</span>`).join('')}</div></div>`;
     }
-    const mem=plan.parties[pi].slice().sort((x,y)=>{
-      const lx=plan.leaders[pi]===x?0:1,ly=plan.leaders[pi]===y?0:1;
-      return lx-ly||JOBS.indexOf(jobOf(x)||'')-JOBS.indexOf(jobOf(y)||'')||x.localeCompare(y,'ko');
-    });
+    const mem=plan.parties[pi];
     const other=days[1-pi];
-    const rows=mem.map(n=>{
-      const mine=chars.includes(n);
-      const av=availAt(n,day),both=other&&availAt(n,other)&&av;
-      return `<div class="mem${mine?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="${pi}">${editable?'<span class="grip" data-drag="1" title="끌어서 이동">⋮⋮</span>':''}<span class="mn">${plan.leaders[pi]===n?'★ ':''}${esc(dn(n))}</span>${av?'':'<span class="badge">투표 없음</span>'}${both?'<span class="both">양쪽 가능</span>':''}</div>`;
-    }).join('');
     const lack=RAID-mem.length;
-    return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}파티</b><span>${D[day.d]}요일 ${lab(day.s)}</span>${plan.confirmed?'<span class="lock">확정</span>':''}<span class="cnt">${mem.length}/${RAID}명</span></div>${cardChecks(pi,mem)}<div class="sep"></div>${rows}${lack>0?`<div class="mem" style="color:var(--danger);cursor:default">${lack}명 부족</div>`:''}</div>`;
+    return `<div class="pcard" data-pi="${pi}"><div class="ph"><b>${pi+1}포스</b><span>${D[day.d]}요일 ${lab(day.s)}</span>${plan.confirmed?'<span class="lock">확정</span>':''}<span class="cnt">${mem.length}/${RAID}명</span></div>${cardChecks(pi,mem)}<div class="sep"></div>${forceCells(pi,editable,day,other)}${lack>0?`<div class="cand" style="color:var(--danger);margin:6px 0 0">${lack}명 부족</div>`:''}</div>`;
   });
   $('pv-cards').innerHTML=cards.join('');
   // 대기
@@ -1535,7 +1651,7 @@ function renderParty(){
 }
 
 /* 드래그 / 탭 교체 */
-let dg=null,suppressClick=false,scrollTimer=null,scrollDir=0;
+let dg=null,suppressClick=false,scrollTimer=null,scrollDir=0,pendParty=false;
 function autoScroll(y){
   const h=window.innerHeight;
   scrollDir=y<80?-1:(y>h-80?1:0);
@@ -1545,7 +1661,7 @@ function autoScroll(y){
 function stopAutoScroll(){scrollDir=0;if(scrollTimer){clearInterval(scrollTimer);scrollTimer=null}}
 function targetAt(x,y){
   const el=document.elementFromPoint(x,y);if(!el)return null;
-  const m=el.closest('.mem[data-n],.wchip[data-n]');
+  const m=el.closest('.cell[data-n],.mem[data-n],.wchip[data-n]');
   if(m)return {kind:'member',name:m.dataset.n,p:m.dataset.p,el:m};
   const c=el.closest('.pcard[data-pi]');
   if(c)return {kind:'card',p:c.dataset.pi,el:c};
@@ -1573,7 +1689,7 @@ function applyMove(src,tgt){
   }else if(tgt.kind==='card'){
     const dpi=+tgt.p;
     if(src.p!=='w'&&+src.p===dpi)return;
-    if(P[dpi].length>=RAID){pvMsg('파티가 가득 찼습니다. 바꿀 사람 위에 놓으세요.','err');return}
+    if(P[dpi].length>=RAID){pvMsg('포스가 가득 찼습니다. 바꿀 사람 위에 놓으세요.','err');return}
     if(src.p!=='w')rm(+src.p,src.name);
     P[dpi].push(src.name);
   }else return;
@@ -1583,7 +1699,7 @@ $('partyview').addEventListener('pointerdown',e=>{
   const g=e.target.closest('[data-drag]');
   if(!g||!canEdit())return;
   const m=g.closest('[data-n]');
-  dg={name:m.dataset.n,p:m.dataset.p,x:e.clientX,y:e.clientY,ghost:null,pid:e.pointerId,grip:g};
+  dg={name:m.dataset.n,p:m.dataset.p,x:e.clientX,y:e.clientY,ghost:null,pid:e.pointerId,grip:g,t0:Date.now()};
   try{g.setPointerCapture(e.pointerId)}catch(err){}
   e.preventDefault();
 });
@@ -1611,6 +1727,7 @@ function endDrag(e,cancel){
       if(t){applyMove({name:d.name,p:d.p},t);renderParty()}
     }
   }
+  if(pendParty){pendParty=false;renderParty()}
 }
 $('partyview').addEventListener('pointerup',e=>endDrag(e,false));
 $('partyview').addEventListener('pointercancel',e=>endDrag(e,true));
@@ -1634,7 +1751,7 @@ function setErrMsg(m){const e=$('aerr');if(e)e.textContent=m;status='';const o=$
 function done(m){status=m;renderAdmin()}
 function setAdmin(on){
   admin=on;
-  if(on)ss.set('regi_admin','1');else ss.del('regi_admin');
+  if(on)ls.set('regi_admin','1');else{ls.set('regi_admin','');ss.del('regi_admin')}
   pendReset=null;pendTabDel=false;mgrEdit=null;mgrDel=null;status='';
   renderAdmin();renderMgr();renderMemos();
   if(view==='party'){renderParty();renderPartyAdmin()}
@@ -1651,9 +1768,10 @@ function renderAdmin(){
   else if(tabs.length>1)h+='<button class="danger" data-act="tdel">현재 탭 삭제</button>';
   else h+='<span class="lbl">탭은 최소 1개가 필요합니다</span>';
   h+='<button data-act="alogout" style="margin-left:auto">관리자 나가기</button></div></div>';
+  h+='<div class="sec"><span class="lbl">시간표 표시 시간</span><div class="row" style="margin:0"><label style="display:inline-flex;align-items:center;gap:6px;font-size:13px">표시 시작 시각 <select id="vf" aria-label="표시 시작 시각">'+[...Array(10)].map((_,k)=>{const sv=18+2*k;return `<option value="${sv}"${sv===VIS0?' selected':''}>${lab(sv)}${sv===36?' (기본)':''}</option>`}).join('')+'</select> ~ 24:00</label><span class="lbl">기본은 18:00~24:00입니다. 더 이른 시간을 열면 모든 참여자의 시간표에 함께 표시되고 추천·편성에도 반영됩니다. 숨겨진 시간의 체크는 지워지지 않습니다.</span></div></div>';
   h+='<div class="sec"><span class="lbl">투표·메모·편성 초기화 (새 주 시작)</span><div class="row" style="margin:0">';
-  if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표, 메모, 파티 편성을 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
-  else if(pendReset==='all')h+=`<span style="color:var(--danger);font-weight:600">모든 탭(${tabs.length}개)의 투표, 메모, 파티 편성을 지울까요?</span><button class="emerg" data-act="reset-yes">예, 모두 지우기</button><button data-act="reset-no">취소</button>`;
+  if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표, 메모, 포스 편성을 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
+  else if(pendReset==='all')h+=`<span style="color:var(--danger);font-weight:600">모든 탭(${tabs.length}개)의 투표, 메모, 포스 편성을 지울까요?</span><button class="emerg" data-act="reset-yes">예, 모두 지우기</button><button data-act="reset-no">취소</button>`;
   else h+=`<button data-act="reset-tab">현재 탭 전체 초기화 (${esc(t.title)})</button><button class="emerg" data-act="reset-all">⚠ 전체 탭 초기화</button><span class="lbl">탭, 캐릭터, 편성 규칙은 그대로 남습니다</span>`;
   h+='</div></div>';
   h+='<p class="err" id="aerr" style="margin:6px 0 0"></p><p class="ok" id="aok">'+esc(status)+'</p>';
@@ -1664,6 +1782,13 @@ $('admbtn').addEventListener('click',()=>{
   if(!w.hidden)renderAdmin();
 });
 $('adm').addEventListener('input',e=>{if(e.target.id==='tn')tnVal=e.target.value});
+$('adm').addEventListener('change',e=>{
+  if(e.target.id!=='vf'||!admin)return;
+  const v=+e.target.value;
+  if(!(v>=18&&v<=36))return;
+  VIS0=v;bump();buildGrid();saveRulesSoon();
+  done(v===36?'표시 시간을 기본(18:00~24:00)으로 바꿨습니다.':`표시 시간을 ${lab(v)}~24:00으로 바꿨습니다.`);
+});
 $('adm').addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   if(e.target.id==='ac'){const b=$('adm').querySelector('[data-act=login]');if(b)b.click()}
@@ -1708,7 +1833,7 @@ $('adm').addEventListener('click',async e=>{
       const targets=all?tabs.map(x=>x.id):[tabId];
       planSaving=null;clearTimeout(planTimer);
       for(const id of targets){clearDirtyFor(id);await ad.clearTab(id)}
-      done(all?'모든 탭의 투표, 메모, 파티 편성을 초기화했습니다.':`"${t.title}" 탭의 투표, 메모, 파티 편성을 초기화했습니다.`);return;
+      done(all?'모든 탭의 투표, 메모, 포스 편성을 초기화했습니다.':`"${t.title}" 탭의 투표, 메모, 포스 편성을 초기화했습니다.`);return;
     }
   }catch(err){
     setErrMsg('처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
@@ -1930,7 +2055,7 @@ addEventListener('offline',()=>setConn('err','오프라인'));
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 })();
-if(DEMO)window.__regi={compose,composeBest,computeRec,evalRes,peopleFor,JOBS,GROUPS,D,idxOf,N,toBits,toStr,get plan(){return plan},get rules(){return rules},get ad(){return ad}};
+if(DEMO)window.__regi={layoutForce,planText,get profiles(){return profiles},get VIS0(){return VIS0},compose,composeBest,computeRec,evalRes,peopleFor,JOBS,GROUPS,D,idxOf,N,toBits,toStr,get plan(){return plan},get rules(){return rules},get ad(){return ad}};
 </script>
 </body>
 </html>
