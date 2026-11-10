@@ -192,6 +192,10 @@ details p{margin:8px 0 0}
 .wait b{color:var(--text);font-weight:600}
 .wchip{display:inline-flex;align-items:center;gap:2px;background:var(--surface2);border-radius:var(--radius);padding:2px 10px 2px 4px;margin:4px 6px 0 0;font-size:13px;color:var(--text);cursor:pointer}
 .wchip.mine{font-weight:700;color:var(--accent-text)}
+.wchip.off{background:transparent;border:1px dashed var(--border-strong);padding:1px 9px 1px 3px;color:var(--text2)}
+.wchip small{font-size:10.5px;color:var(--text3);margin-left:5px;font-weight:400}
+.wait .wsub{font-size:12px;color:var(--text3)}
+.wchip.off.sel,.wchip.off.dt{background:var(--accent-bg)}
 .ghost{position:fixed;pointer-events:none;z-index:60;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:6px 14px;font-size:14px;font-weight:600;opacity:.95}
 .hintline{font-size:12px;color:var(--text3);margin:8px 0 0}
 .nov{font-size:12px;color:var(--text2);margin:8px 2px 0;line-height:1.9}
@@ -201,6 +205,12 @@ details p{margin:8px 0 0}
 
 .copybar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin:0 0 8px}
 #pv-copy{font-weight:600;background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent)}
+.cbx{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.cbx[hidden]{display:none}
+.cbx-in{background:var(--surface);color:var(--text);border-radius:12px;padding:14px;width:min(420px,100%);max-height:90vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.cbx-in p{margin:0;font-size:13px;line-height:1.5;color:var(--text2)}
+#cbx-t{width:100%;box-sizing:border-box;font-size:16px;line-height:1.5;padding:8px;border:1px solid var(--border-strong);background:var(--surface2);color:var(--text);border-radius:8px;resize:none;font-family:inherit;-webkit-user-select:text;user-select:text}
+.cbx-b{display:flex;gap:8px;justify-content:flex-end}
 .pgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:42px;padding:5px 3px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface2);font-size:13px;line-height:1.25;word-break:break-all;cursor:pointer}
 .cell.blank{background:transparent;border-style:dashed;border-color:var(--border);cursor:default}
@@ -212,6 +222,22 @@ details p{margin:8px 0 0}
 .cell small{font-size:10px;line-height:1.2;margin-top:2px}
 .cell small.cb{color:var(--danger-text);background:var(--danger-bg);border-radius:4px;padding:0 4px}
 .cell small.cb2{color:var(--text3)}
+.cell[data-j]{color:#fff;border-color:rgba(0,0,0,.22);text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.cell[data-j="검성"]{background:rgba(34,137,155,.9)}
+.cell[data-j="수호성"]{background:rgba(89,106,170,.9)}
+.cell[data-j="궁성"]{background:rgba(75,147,97,.9)}
+.cell[data-j="살성"]{background:rgba(103,147,67,.9)}
+.cell[data-j="마도성"]{background:rgba(110,91,166,.9)}
+.cell[data-j="치유성"]{background:rgba(169,141,55,.9)}
+.cell[data-j="정령성"]{background:rgba(142,75,160,.9)}
+.cell[data-j="호법성"]{background:rgba(167,107,52,.9)}
+.cell[data-j="권성"]{background:rgba(222,109,109,.9)}
+.cell[data-j] .cn,.cell[data-j].mine .cn{color:#fff}
+.cell[data-j].mine{border-color:var(--accent);box-shadow:inset 0 0 0 2px rgba(255,255,255,.9)}
+.cell[data-j].sel,.cell[data-j].dt{box-shadow:0 0 0 3px var(--accent)}
+.cell[data-j] .ld{color:#FFE27A}
+.cell[data-j] .grip{color:rgba(255,255,255,.88)}
+.cell[data-j] small.cb2{color:rgba(255,255,255,.9)}
 .dl{margin:18px 0 0}
 .dl h3{font-size:14px;font-weight:600;margin:0 0 4px}
 .dl .dsub{font-size:12px;color:var(--text3);margin:0 0 8px}
@@ -294,12 +320,13 @@ details p{margin:8px 0 0}
       <div id="pv-top"></div>
       <div id="pv-admin" hidden>
         <div class="pv-sec"><h3>요일 지정 <span>자동은 추천 요일을 따릅니다</span></h3><div class="lead"><label>1포스 요일<select id="pv-d0"></select></label><label>2포스 요일<select id="pv-d1"></select></label></div></div>
-        <div class="pv-sec"><h3>편성 규칙 <span>모든 탭 공통 · 체크를 풀면 고려하지 않음</span></h3><div class="rgrid" id="pv-rules"></div><p class="hintline">조건을 못 맞춰도 오류 없이 가능한 만큼 채우고, 못 맞춘 조건은 결과에 표시합니다. 같은 사람의 캐릭터는 서로 다른 포스에 넣습니다. 근접딜러(살성·권성)와 원거리딜러(궁성·정령성·마도성)는 묶어서 세고, 묶음 안에서는 가능한 사람 중 무작위로 편성합니다. 포스 편성을 다시 누르면 무작위 선택이 새로 바뀝니다.</p></div>
+        <div class="pv-sec"><h3>편성 규칙 <span>모든 탭 공통 · 체크를 풀면 고려하지 않음</span></h3><div class="rgrid" id="pv-rules"></div><p class="hintline">조건을 못 맞춰도 오류 없이 가능한 만큼 채우고, 못 맞춘 조건은 결과에 표시합니다. 인원이 부족하면 두 포스의 필수 직업(최소·정확히)을 먼저 채운 뒤, 남은 인원은 1포스부터 10명까지 채우고 나머지를 2포스에 넣습니다. 같은 사람의 캐릭터는 서로 다른 포스에 넣습니다. 근접딜러(살성·권성)와 원거리딜러(궁성·정령성·마도성)는 묶어서 세고, 묶음 안에서는 가능한 사람 중 무작위로 편성합니다. 포스 편성을 다시 누르면 무작위 선택이 새로 바뀝니다.</p></div>
         <div class="pv-sec"><h3>포스장 <span>해당 요일에 투표한 캐릭터 중에서</span></h3><div class="lead" id="pv-leaders"></div></div>
         <div class="pbar" id="pv-btns"></div>
       </div>
       <div id="pv-msgwrap" class="pmsg" style="margin:0 0 8px"></div>
       <div class="copybar" id="pv-copybar" hidden><span id="pv-copymsg" class="pmsg"></span><button id="pv-copy">복사하기</button></div>
+      <div class="cbx" id="cbx" hidden role="dialog" aria-modal="true" aria-label="편성 복사"><div class="cbx-in"><p id="cbx-p">이 환경에서는 자동 복사가 막혀 있습니다. 아래 글을 길게 눌러 전체 선택한 뒤 복사하세요.</p><textarea id="cbx-t" readonly rows="9"></textarea><div class="cbx-b"><button id="cbx-sel">전체 선택</button><button id="cbx-x">닫기</button></div></div></div>
       <div class="parties" id="pv-cards"></div>
       <div class="wait" id="pv-wait"></div>
       <p class="hintline" id="pv-hint" hidden>끌어서 옮기거나, 사람을 눌러 선택한 뒤 바꿀 사람(또는 포스, 대기 칸)을 누르세요.</p>
@@ -513,7 +540,7 @@ if(!OWNER){OWNER='o'+Math.random().toString(36).slice(2,10)+Date.now().toString(
 /* ---------- 편성 알고리즘 (순수 함수) ---------- */
 const cmp=(a,b)=>{for(let i=0;i<a.length;i++){if(a[i]!==b[i])return a[i]>b[i]?1:-1}return 0};
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function compose(people,rules,leaders,R){
+function compose(people,rules,leaders,R,mode){
   const members=[[],[]],assigned=new Set();
   const av=(p,i)=>i===0?p.a:p.b;
   const inG=(p,g)=>!!p.job&&g.jobs.includes(p.job);
@@ -558,18 +585,29 @@ function compose(people,rules,leaders,R){
       }
     }
   };
-  fill(true);fill(false);
+  /* 필수 직업(최소/정확히)은 위에서 양쪽 포스 모두 먼저 확보했다. 남는 자리는 1포스부터 R명까지 채우고, 그다음 2포스를 채운다.
+     1단계: 상한·같은 사람 중복 모두 지킴 / 2단계: 상한만 무시 / 3단계(마지막 수단): 같은 사람 중복도 허용 */
+  const fillOne=(pi,lv)=>{
+    while(members[pi].length<R){
+      const c=pool(pi,p=>lv===1?(okMax(pi,p)&&!oc(pi,p)):lv===2?!oc(pi,p):true);
+      if(!c.length)break;
+      const only=c.filter(p=>!av(p,1-pi));
+      add(pi,(only.length?only:c)[0]);
+    }
+  };
+  if(mode==='bal'){fill(true);fill(false)}
+  else{[0,1].forEach(pi=>{fillOne(pi,1);fillOne(pi,2)});[0,1].forEach(pi=>fillOne(pi,3))}
   return {members,wait:people.filter(p=>!assigned.has(p.name)&&(p.a||p.b))};
 }
 function evalRes(res,rules,R,nP){
-  let viol=0;
+  let viol=0,need=0;
   const checks=[{list:[],conflicts:[]},{list:[],conflicts:[]}];
   for(let pi=0;pi<nP;pi++){
     GROUPS.forEach(g=>{
       const r=rules[g.key];if(!r||!r.on)return;
       const c=res.members[pi].filter(p=>p.job&&g.jobs.includes(p.job)).length;
       const ok=r.mode==='min'?c>=r.n:r.mode==='max'?c<=r.n:c===r.n;
-      if(!ok)viol++;
+      if(!ok){viol++;if((r.mode==='min'||r.mode==='exact')&&c<r.n)need++}
       checks[pi].list.push({key:g.key,c,ok,mode:r.mode,n:r.n});
     });
     const seen=new Map();
@@ -580,7 +618,10 @@ function evalRes(res,rules,R,nP){
   const F=res.members[0].length+res.members[1].length;
   const full=res.members.slice(0,nP).every(m=>m.length>=R);
   const tier=full&&viol===0?1:0;
-  return {viol,checks,F,full,tier,S:tier?[1,F,0]:[0,F,-viol]};
+  const n0=res.members[0].length,n1=res.members[1].length;
+  const fill0=new Set(res.members[0].map(p=>p.owner||('n:'+p.name))).size;
+  /* 우선순위: 편성 인원 > 필수 직업 충족 > 1포스 채움 인원 > 그 밖의 위반 */
+  return {viol,need,checks,F,full,tier,n0,n1,fill0,S:tier?[1,F,0,0,0]:[0,F,-need,fill0,-(viol-need)]};
 }
 function composeBest(people,rules,leaders,R,nP,K,seed){
   const base=people.slice().sort((x,y)=>x.name.localeCompare(y.name,'ko'));
@@ -589,9 +630,11 @@ function composeBest(people,rules,leaders,R,nP,K,seed){
   for(let k=0;k<=K;k++){
     let arr=base;
     if(k>0||seed!=null){arr=base.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}}
-    const res=compose(arr,rules,leaders,R);
-    const ev=evalRes(res,rules,R,nP);
-    if(!best||cmp(ev.S,best.ev.S)>0)best={...res,ev};
+    for(const mode of ['prio','bal']){
+      const res=compose(arr,rules,leaders,R,mode);
+      const ev=evalRes(res,rules,R,nP);
+      if(!best||cmp(ev.S,best.ev.S)>0)best={...res,ev};
+    }
   }
   return best;
 }
@@ -1014,7 +1057,7 @@ function recBanner(rec){
   if(nP<2)return `<p class="plan">가능한 요일이 하나뿐입니다 · ${ev.F}/${RAID}명 편성</p>`;
   if(ev.tier===1)return `<p class="plan">두 요일 모두 ${RAID}명 편성과 조건을 맞출 수 있습니다</p>`;
   if(ev.full)return `<p class="plan">${RAID}명은 채울 수 있지만 맞추지 못한 조건이 ${ev.viol}건 있습니다</p>`;
-  return `<p class="plan">최선의 조합: ${ev.F}/${2*RAID}명 편성 (${2*RAID-ev.F}명 부족${ev.viol?`, 못 맞춘 조건 ${ev.viol}건`:''})</p>`;
+  return `<p class="plan">최선의 조합: ${ev.F}/${2*RAID}명 편성 · 1포스 ${ev.n0}명, 2포스 ${ev.n1}명 (${2*RAID-ev.F}명 부족${ev.viol?`, 못 맞춘 조건 ${ev.viol}건`:''})</p>`;
 }
 function showWho(i){
   const d=i>=BASE?i-BASE:Math.floor(i/48),s=i>=BASE?48:i%48;
@@ -1536,7 +1579,7 @@ function doCompose(){
   p.seed=1+Math.floor(Math.random()*2147483000);
   bump();savePlanSoon();
   const ev=res.ev;
-  pvMsg(ev.tier===1?'편성했습니다. 모든 조건을 충족했습니다.':`편성했습니다. 맞추지 못한 조건 ${ev.viol}건${ev.full?'':`, ${2*RAID-ev.F}명 부족`}.`);
+  pvMsg(ev.tier===1?'편성했습니다. 모든 조건을 충족했습니다.':`편성했습니다. 맞추지 못한 조건 ${ev.viol}건${ev.full?'':`, ${2*RAID-ev.F}명 부족(1포스 ${ev.n0}명, 2포스 ${ev.n1}명)`}.`);
   renderParty();renderPartyAdmin();
 }
 
@@ -1591,9 +1634,10 @@ function forceCells(pi,editable,day,other){
     if(!n)return '<div class="cell blank"></div>';
     const mine=chars.includes(n);
     const ld=L===n?'<span class="ld">★</span>':'';
-    if(!editable&&!admin)return `<div class="cell${mine?' mine':''}" data-n="${esc(n)}" style="cursor:default"><span class="cn">${ld}${esc(n)}</span></div>`;
+    const jj=jobOf(n),dj=JOBS.includes(jj)?` data-j="${jj}"`:'';
+    if(!editable&&!admin)return `<div class="cell${mine?' mine':''}"${dj} data-n="${esc(n)}" style="cursor:default"><span class="cn">${ld}${esc(n)}</span></div>`;
     const av=availAt(n,day),both=other&&av&&availAt(n,other);
-    return `<div class="cell${mine?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="${pi}">${editable?'<span class="grip" data-drag="1" title="끌어서 이동">⋮</span>':''}<span class="cn">${ld}${esc(n)}</span>${av?'':'<small class="cb">투표 없음</small>'}${both?'<small class="cb2">양쪽 가능</small>':''}</div>`;
+    return `<div class="cell${mine?' mine':''}${selMove&&selMove.name===n?' sel':''}"${dj} data-n="${esc(n)}" data-p="${pi}">${editable?'<span class="grip" data-drag="1" title="끌어서 이동">⋮</span>':''}<span class="cn">${ld}${esc(n)}</span>${av?'':'<small class="cb">투표 없음</small>'}${both?'<small class="cb2">양쪽 가능</small>':''}</div>`;
   }).join('')).join('')+'</div>';
 }
 function planText(){
@@ -1607,21 +1651,61 @@ function planText(){
   });
   return out.join('\n\n');
 }
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+/* 구형 복사: 임시 입력칸을 선택해 execCommand('copy'). 아이폰은 contentEditable+Range 선택이 필요하다. 클릭 처리 중(동기)에 호출해야 한다. */
+function legacyCopy(t){
+  const a=document.createElement('textarea');
+  a.value=t;a.setAttribute('aria-hidden','true');a.setAttribute('tabindex','-1');
+  a.style.cssText='position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;opacity:0;font-size:16px;pointer-events:none';
+  const prev=document.activeElement,sel=window.getSelection?window.getSelection():null;
+  const saved=sel&&sel.rangeCount?sel.getRangeAt(0):null;
+  let ok=false;
+  document.body.appendChild(a);
+  try{
+    if(IOS){
+      a.contentEditable='true';a.readOnly=false;
+      const r=document.createRange();r.selectNodeContents(a);
+      if(sel){sel.removeAllRanges();sel.addRange(r)}
+    }else a.setAttribute('readonly','');
+    a.focus({preventScroll:true});a.select();a.setSelectionRange(0,t.length);
+    ok=!!document.execCommand('copy');
+  }catch(e){ok=false}
+  document.body.removeChild(a);
+  try{if(sel){sel.removeAllRanges();if(saved)sel.addRange(saved)}}catch(e){}
+  try{if(prev&&prev.focus)prev.focus({preventScroll:true})}catch(e){}
+  return ok;
+}
+/* 마지막 수단: 글을 보여 주고 사용자가 직접 길게 눌러 복사 */
+function openCopyBox(t){
+  const box=$('cbx'),ta=$('cbx-t');
+  ta.value=t;ta.rows=Math.min(14,t.split('\n').length+1);
+  box.hidden=false;
+  const sel=()=>{try{ta.focus({preventScroll:true});ta.select();ta.setSelectionRange(0,t.length)}catch(e){}};
+  sel();setTimeout(sel,60);
+  $('cbx-sel').onclick=sel;
+}
+function closeCopyBox(){$('cbx').hidden=true}
+$('cbx-x').addEventListener('click',closeCopyBox);
+$('cbx').addEventListener('click',e=>{if(e.target===$('cbx'))closeCopyBox()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cbx').hidden)closeCopyBox()});
 async function copyPlan(){
   const t=planText();
   const m=$('pv-copymsg');
   if(!t){m.textContent='복사할 편성이 없습니다.';return}
-  let ok=false;
-  try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(t);ok=true}}catch(e){}
-  if(!ok){
-    try{
-      const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;top:0;left:0;opacity:0';
-      document.body.appendChild(a);a.select();a.setSelectionRange(0,t.length);ok=document.execCommand('copy');document.body.removeChild(a);
-    }catch(e){ok=false}
+  let ok=false,manual=false;
+  /* 1) 클립보드 API(https). 클릭 처리 중 바로 호출해야 아이폰에서도 허용된다 */
+  let p=null;
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)p=navigator.clipboard.writeText(t)}catch(e){p=null}
+  if(p){
+    try{await Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),2500))]);ok=true}catch(e){ok=false}
   }
-  m.textContent=ok?'복사했습니다':'복사하지 못했습니다. 길게 눌러 직접 복사하세요.';
+  /* 2) API가 없거나 거부되면 구형 복사 (카카오톡·네이버 등 인앱 브라우저, 구형 기기) */
+  if(!ok)ok=legacyCopy(t);
+  /* 3) 그래도 안 되면 직접 복사 창 */
+  if(!ok){manual=true;openCopyBox(t)}
+  m.textContent=ok?'복사했습니다':'자동 복사가 막혀 있어 복사 창을 열었습니다.';
   m.className='pmsg'+(ok?'':' err');
-  clearTimeout(copyPlan.t);copyPlan.t=setTimeout(()=>{m.textContent=''},2500);
+  clearTimeout(copyPlan.t);copyPlan.t=setTimeout(()=>{m.textContent=''},manual?6000:2500);
 }
 $('pv-copy').addEventListener('click',copyPlan);
 function renderParty(){
@@ -1678,12 +1762,19 @@ function renderParty(){
   // 대기
   const wl=$('pv-wait');
   if(composed){
+    /* 투표한 사람 중 두 포스에 들어가지 못한 인원은 모두 대기. 요일·시간이 맞지 않아 빠진 사람도 포함하고 투표한 요일을 작게 표시 */
     const inP=new Set(plan.parties.flat());
     const cand=[];
-    ents.forEach((b,n)=>{if(!inP.has(n)&&days.some(d=>availAt(n,d)))cand.push(n)});
-    cand.sort((x,y)=>x.localeCompare(y,'ko'));
+    ents.forEach((b,n)=>{if(!inP.has(n)&&anyVis(b))cand.push(n)});
+    const fit=n=>days.some(d=>availAt(n,d));
+    cand.sort((x,y)=>(fit(y)-fit(x))||x.localeCompare(y,'ko'));
+    const off=cand.filter(n=>!fit(n)).length;
+    const dayList=n=>{const b=ents.get(n);return D.filter((_,d)=>hasDay(b,d)).join('·')};
     wl.hidden=false;
-    wl.innerHTML=`<b>대기 ${cand.length}명</b>${cand.length?'<br>':''}`+cand.map(n=>`<span class="wchip${chars.includes(n)?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="w">${editable?'<span class="grip" data-drag="1">⋮⋮</span>':''}${esc(dn(n))}</span>`).join('');
+    wl.innerHTML=`<b>대기 ${cand.length}명</b>${off?` <span class="wsub">(편성 요일·시간에 투표하지 않아 제외된 ${off}명 포함, 연한 칸)</span>`:''}${cand.length?'<br>':''}`+cand.map(n=>{
+      const f=fit(n);
+      return `<span class="wchip${f?'':' off'}${chars.includes(n)?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="w">${editable?'<span class="grip" data-drag="1">⋮⋮</span>':''}${esc(dn(n))}${f?'':`<small>${dayList(n)}</small>`}</span>`;
+    }).join('');
   }else wl.hidden=true;
   $('pv-hint').hidden=!editable;
   renderPartyBtns();
@@ -2096,7 +2187,7 @@ addEventListener('offline',()=>setConn('err','오프라인'));
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 })();
-if(DEMO)window.__regi={layoutForce,planText,get profiles(){return profiles},get VIS0(){return VIS0},compose,composeBest,computeRec,evalRes,peopleFor,JOBS,GROUPS,D,idxOf,N,toBits,toStr,get plan(){return plan},get rules(){return rules},get ad(){return ad}};
+if(DEMO)window.__regi={layoutForce,planText,get ents(){return ents},anyVis,get profiles(){return profiles},get VIS0(){return VIS0},compose,composeBest,computeRec,evalRes,peopleFor,JOBS,GROUPS,D,idxOf,N,toBits,toStr,get plan(){return plan},get rules(){return rules},get ad(){return ad}};
 </script>
 </body>
 </html>
