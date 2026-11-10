@@ -182,6 +182,8 @@ details p{margin:8px 0 0}
 .rr.off select,.rr.off input[type=number]{opacity:.4}
 .lead{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 16px}
 .lead label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2)}
+.lead .sc{display:flex;flex-direction:column;gap:8px}
+.seg button[hidden]{display:none}
 .pbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}
 #pv-go{background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent);font-weight:600}
 .pmsg{font-size:13px;color:var(--text2)}
@@ -341,7 +343,7 @@ details p{margin:8px 0 0}
     <div id="partyview" hidden>
       <div id="pv-top"></div>
       <div id="pv-admin" hidden>
-        <div class="pv-sec"><h3>요일 지정 <span>자동은 추천 요일을 따릅니다</span></h3><div class="lead"><label>1포스 요일<select id="pv-d0"></select></label><label>2포스 요일<select id="pv-d1"></select></label></div></div>
+        <div class="pv-sec"><h3>시간 지정 <span>자동은 추천 요일·시간을 따릅니다</span></h3><div class="lead"><div class="sc"><label>1포스 요일<select id="pv-d0"></select></label><label>1포스 시간<select id="pv-t0"></select></label></div><div class="sc"><label>2포스 요일<select id="pv-d1"></select></label><label>2포스 시간<select id="pv-t1"></select></label></div></div></div>
         <div class="pv-sec"><h3>편성 규칙 <span>모든 탭 공통 · 체크를 풀면 고려하지 않음</span></h3><div class="rgrid" id="pv-rules"></div><p class="hintline">조건을 못 맞춰도 오류 없이 가능한 만큼 채우고, 못 맞춘 조건은 결과에 표시합니다. 인원이 부족하면 두 포스의 필수 직업(최소·정확히)을 먼저 채운 뒤, 남은 인원은 1포스부터 10명까지 채우고 나머지를 2포스에 넣습니다. 같은 사람의 캐릭터는 서로 다른 포스에 넣습니다. 근접딜러(살성·권성)와 원거리딜러(궁성·정령성·마도성)는 묶어서 세고, 묶음 안에서는 가능한 사람 중 무작위로 편성합니다. 포스 편성을 다시 누르면 무작위 선택이 새로 바뀝니다.</p></div>
         <div class="pv-sec"><h3>포스장 <span>해당 요일에 투표한 캐릭터 중에서</span></h3><div class="lead" id="pv-leaders"></div></div>
         <div class="pbar" id="pv-btns"></div>
@@ -699,21 +701,31 @@ function peopleFor(E,days,meta){
   });
   return out;
 }
-function computeRec(E,counts,meta,rules,override,R){
-  const bests=D.map((_,d)=>dayBest(counts,d));
+function computeRec(E,counts,meta,rules,override,R,ovt){
   const ov=override||[null,null];
-  const mk=d=>bests[d]||{d,s:40,c:0};
-  const days=[];bests.forEach((b,d)=>{if(b)days.push(d)});
-  const o1=ov[0],o2=ov[1];
-  let pairs=[];
-  if(o1!=null&&o2!=null&&o1!==o2){const [x,y]=o1<o2?[o1,o2]:[o2,o1];pairs=[[mk(x),mk(y)]]}
-  else if(o1!=null||o2!=null){
-    const o=o1!=null?o1:o2;
-    days.filter(d=>d!==o).forEach(d=>{const [x,y]=o<d?[o,d]:[d,o];pairs.push([mk(x),mk(y)])});
-    if(!pairs.length)pairs.push([mk(o)]);
-  }else{
-    for(let i=0;i<days.length;i++)for(let j=i+1;j<days.length;j++)pairs.push([bests[days[i]],bests[days[j]]]);
-    if(!pairs.length&&days.length===1)pairs.push([bests[days[0]]]);
+  /* 지정 시간: 표시 시간 안의 값만 인정(그 밖이면 자동) */
+  const ot=[0,1].map(i=>{const t=ovt&&ovt[i];return Number.isInteger(t)&&t>=VIS0&&t<SEND?t:null});
+  const bests=D.map((_,d)=>dayBest(counts,d));
+  const cnt=(d,t)=>counts[idxOf(d,t)]||0;
+  /* i번째 포스(0=1포스, 1=2포스)가 d요일에 열릴 때의 시간: 지정 시간이 있으면 그 시간, 없으면 그 요일에 가장 많이 되는 시간 */
+  const slot=(d,i)=>ot[i]!=null?{d,s:ot[i],c:cnt(d,ot[i])}:(bests[d]||{d,s:40,c:0});
+  /* 후보 요일: 지정했으면 그 요일만, 자동이면 투표(지정 시간이 있으면 그 시간에 투표)가 있는 요일 */
+  const cand=i=>{
+    if(ov[i]!=null)return [ov[i]];
+    const out=[];
+    D.forEach((_,d)=>{if(ot[i]!=null?cnt(d,ot[i])>0:!!bests[d])out.push(d)});
+    return out;
+  };
+  const bothAuto=ov[0]==null&&ov[1]==null;
+  const pairs=[];
+  cand(0).forEach(a=>cand(1).forEach(b=>{
+    if(a===b)return;
+    if(bothAuto&&a>b)return; /* 둘 다 자동이면 빠른 요일이 1포스 */
+    pairs.push([slot(a,0),slot(b,1)]);
+  }));
+  if(!pairs.length){
+    const one=ov[0]!=null?slot(ov[0],0):ov[1]!=null?slot(ov[1],1):(cand(0).length===1?slot(cand(0)[0],0):null);
+    if(one)pairs.push([one]);
   }
   if(!pairs.length)return {days:[],res:null,people:[]};
   let best=null;
@@ -802,7 +814,7 @@ function demoAdapter(){
     async getPlan(t){return plans[t]||null},
     async clearTab(t,withMembers){ent[t]=new Map();memo[t]=new Map();plans[t]=null;if(withMembers)members[t]=new Set();nEnt(t);nMemo(t);nPlan(t);if(withMembers)nMem(t)},
     async deleteTab(t){const i=tabsData.findIndex(x=>x.id===t);if(i>=0)tabsData.splice(i,1);delete ent[t];delete memo[t];delete plans[t];delete members[t];nTabs()},
-    async addTab(title,order,hue){const id='t'+Date.now();tabsData.push({id,title,order,hue});ent[id]=new Map();memo[id]=new Map();plans[id]=null;members[id]=new Set();nTabs();return id},
+    async addTab(title,order,hue,kind){const id='t'+Date.now();tabsData.push(kind==='vote'?{id,title,order,hue,kind}:{id,title,order,hue});ent[id]=new Map();memo[id]=new Map();plans[id]=null;members[id]=new Set();nTabs();return id},
     async renameTab(id,title){tabsData.find(t=>t.id===id).title=title;nTabs()},
     async seedTabs(){},
     _snap:snap
@@ -869,7 +881,7 @@ async function firebaseAdapter(onErr){
       }
     },
     async deleteTab(t){await this.clearTab(t,true);await F.deleteDoc(F.doc(db,'tabs',t))},
-    async addTab(title,order,hue){const tid='t'+Date.now();await F.setDoc(F.doc(db,'tabs',tid),{title,order,hue});return tid},
+    async addTab(title,order,hue,kind){const tid='t'+Date.now();await F.setDoc(F.doc(db,'tabs',tid),kind==='vote'?{title,order,hue,kind}:{title,order,hue});return tid},
     renameTab:(tid,title)=>F.updateDoc(F.doc(db,'tabs',tid),{title}),
     async seedTabs(){
       const base=[['t1','성역1',1,0],['t2','본부',2,1],['t3','본캐팟',3,2]];
@@ -907,7 +919,7 @@ const addedAt=new Map();
 let view='me';
 let paint=null,dragging=false,touchStart=null;
 let admin=ls.get('regi_admin','')==='1'||ss.get('regi_admin')==='1';
-let pendReset=null,pendTabDel=false,status='',tnVal='',seeded=false,pendMy=false,pendCharDel=false,jobEdit=false;
+let pendReset=null,pendTabDel=false,status='',tnVal='',tkVal='force',seeded=false,pendMy=false,pendCharDel=false,jobEdit=false;
 let profiles=new Map(),profilesLoaded=false;
 const defaultRules=()=>{const r={};GROUPS.forEach(g=>r[g.key]={on:false,mode:'exact',n:1});r['수호성']={on:true,mode:'min',n:1};r['치유성']={on:true,mode:'max',n:2};r['검성']={on:true,mode:'min',n:1};return r};
 let rules=defaultRules();
@@ -918,6 +930,10 @@ let dataVer=0,recCache=null;
 const dirty=new Map();
 const grid=$('grid');
 const curTab=()=>tabs.find(t=>t.id===tabId);
+/* 탭 유형: force=성역 포스편성(기본, 기존 탭), vote=일반투표(내 체크·전체 현황만) */
+const KINDS={force:'성역 포스편성',vote:'일반투표'};
+const kindOf=t=>t&&t.kind==='vote'?'vote':'force';
+const isVote=()=>kindOf(curTab())==='vote';
 const saveChars=()=>{if(tabId){tabChars[tabId]=chars;tabCi[tabId]=ci;tabAct[tabId]=[...act]}ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tact',JSON.stringify(tabAct));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]))};
 const bump=()=>{dataVer++;recCache=null};
 const jobOf=n=>{const p=profiles.get(n);return p?p.job:null};
@@ -938,11 +954,17 @@ function agg(){
   });
   return {E,counts,days,tot:Math.max(E.length,1)};
 }
+/* 일반투표 탭: 직업·편성 규칙과 무관하게, 가장 많이 되는 시간이 있는 요일 순위만 */
+function voteRec(A){
+  const b=D.map((_,d)=>dayBest(A.counts,d)).filter(Boolean);
+  b.sort((x,y)=>y.c-x.c||x.d-y.d);
+  return {days:b.slice(0,2)};
+}
 function getRec(){
   if(recCache&&recCache.ver===dataVer)return recCache;
   const A=agg();
   const meta=n=>profiles.get(n)||{};
-  const r=computeRec(A.E,A.counts,meta,rules,plan?plan.override:null,RAID);
+  const r=computeRec(A.E,A.counts,meta,rules,plan?plan.override:null,RAID,plan?plan.ovt:null);
   recCache={ver:dataVer,A,...r};
   return recCache;
 }
@@ -1020,7 +1042,7 @@ const BG=['transparent','linear-gradient(135deg,var(--accent) 50%,transparent 50
 function cellState(ab,i){let k=0;ab.forEach(b=>{if(b&&b[i])k++});return !k?0:k===ab.length?2:1}
 const hasDay=(b,d)=>{if(!b)return false;for(let s=VIS0;s<SEND;s++)if(b[idxOf(d,s)])return true;return false};
 function rerender(){
-  if(view==='party'){renderParty();if(admin&&!$('pv-leaders').contains(document.activeElement))renderPartyLeaders()}
+  if(view==='party'){renderParty();if(admin){if(!$('pv-leaders').contains(document.activeElement))renderPartyLeaders();fillTimeOpts()}}
   else refresh();
 }
 
@@ -1028,7 +1050,8 @@ function refresh(){
   if(view==='party'){renderParty();return}
   const A=agg();
   const names=actives(),ab=names.map(n=>ents.get(n)||null);
-  const pdays=(plan&&plan.parties&&plan.days)?[0,1].map(i=>plan.days[i]!=null&&plan.slots[i]!=null?{d:plan.days[i],s:plan.slots[i],n:i+1}:null).filter(Boolean):[];
+  const vote=isVote();
+  const pdays=(!vote&&plan&&plan.parties&&plan.days)?[0,1].map(i=>plan.days[i]!=null&&plan.slots[i]!=null?{d:plan.days[i],s:plan.slots[i],n:i+1}:null).filter(Boolean):[];
   const pset=new Map(pdays.map(x=>[idxOf(x.d,x.s),x.n]));
   grid.querySelectorAll('.t').forEach(t=>t.classList.toggle('pk',pdays.some(x=>x.s===+t.dataset.row)));
   grid.querySelectorAll('.c').forEach(el=>{
@@ -1047,7 +1070,7 @@ function refresh(){
       el.style.color=c/A.tot>0.6?'var(--on-ok)':'';
     }
   });
-  const rec=view==='all'?getRec():null;
+  const rec=view==='all'?(vote?voteRec(A):getRec()):null;
   const rdays=rec?rec.days:[];
   grid.querySelectorAll('.h[data-col]').forEach(h=>{
     const d=+h.dataset.col,x=A.days[d];
@@ -1073,8 +1096,12 @@ function refresh(){
     const namesAt=day=>{const i=idxOf(day.d,day.s);return A.E.filter(o=>o.b[i]).map(o=>o.n)};
     const lists=rdays.map(namesAt);
     const dups=new Map();
-    if(rdays.length===2){const s2=new Set(lists[1]);lists[0].forEach(n=>{if(s2.has(n))dups.set(n,dups.size)})}
+    if(!vote&&rdays.length===2){const s2=new Set(lists[1]);lists[0].forEach(n=>{if(s2.has(n))dups.set(n,dups.size)})}
     const nm=n=>dups.has(n)?`<span class="nm" style="background:hsl(${Math.round((dups.get(n)*137.5)%360)} 75% 55% / .32)">${esc(dn(n))}</span>`:`<span class="nm">${esc(dn(n))}</span>`;
+    if(vote){
+      $('best').innerHTML=rdays.length?rdays.map((x,i)=>`<div class="box"><p>${i+1}위 ${D[x.d]}요일 · ${x.c}명 <span>· 가장 많이 되는 시간 ${lab(x.s)}</span></p><div class="chips">${lists[i].map(nm).join('')}</div></div>`).join(''):'<div class="box"><p>아직 투표한 사람이 없습니다</p></div>';
+      return;
+    }
     $('best').innerHTML=recBanner(rec)+(rdays.length?rdays.map((x,i)=>
       `<div class="box"><p>${i+1}위 ${D[x.d]}요일 · ${x.c}명 <span>· 추천 시간 ${lab(x.s)} · 편성 ${rec.res.members[i].length}/${RAID}</span></p><div class="chips">${lists[i].map(nm).join('')}</div></div>`
     ).join(''):'<div class="box"><p>아직 투표한 사람이 없습니다</p></div>')+(dups.size?'<p class="dupnote">배경색이 같은 이름은 두 요일 모두 가능한 캐릭터입니다. 어느 쪽에 넣어도 됩니다.</p>':'');
@@ -1195,13 +1222,14 @@ function onSettings(json){
   if(view==='party'){if(!$('pv-rules').contains(document.activeElement))buildRulesGrid();renderParty()}
   else if(view==='all')refresh();
 }
-function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],parties:null,lay:null,rj:'',seed:0}}
+function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],ovt:[null,null],parties:null,lay:null,rj:'',seed:0}}
 function parsePlan(json){
   if(!json)return null;
   try{
     const o=JSON.parse(json),p=newPlan();
     p.confirmed=!!o.confirmed;
     if(Array.isArray(o.leaders))p.leaders=[0,1].map(i=>typeof o.leaders[i]==='string'?o.leaders[i]:null);
+    if(Array.isArray(o.ovt))p.ovt=[0,1].map(i=>Number.isInteger(o.ovt[i])&&o.ovt[i]>=0&&o.ovt[i]<=48?o.ovt[i]:null);
     if(Array.isArray(o.override))p.override=[0,1].map(i=>Number.isInteger(o.override[i])&&o.override[i]>=0&&o.override[i]<7?o.override[i]:null);
     if(Array.isArray(o.parties)){
       p.parties=[0,1].map(i=>Array.isArray(o.parties[i])?o.parties[i].filter(x=>typeof x==='string'):[]);
@@ -1221,6 +1249,13 @@ function onPlan(json){
   if(view==='party'){renderParty();renderPartyAdmin()}
   else refresh();
 }
+/* 일반투표 탭에서는 '포스 편성' 보기를 숨기고, 그 화면에 있었다면 내 체크로 돌린다 */
+function syncKind(){
+  const v=isVote();
+  const pb=$('vseg').querySelector('[data-v="party"]');
+  if(pb)pb.hidden=v;
+  if(v&&view==='party')setView('me');
+}
 function selectTab(id){
   flushAll();
   tabId=id;ls.set('regi_tab',id);
@@ -1233,6 +1268,7 @@ function selectTab(id){
   chars=tabChars[id]||(tabChars[id]=[]);ci=Math.min(tabCi[id]||0,Math.max(chars.length-1,0));
   act=new Set(tabAct[id]||[]);normAct();
   pendReset=null;pendTabDel=false;status='';pendMy=false;pendCharDel=false;jobEdit=false;
+  syncKind();
   renderTabs();renderChars();renderMyReset();renderJobFix();buildGrid();
   unsubMb=ad.subscribeMembers(id,onMembers);
   unsubE=ad.subscribeEntries(id,onEntries);
@@ -1262,7 +1298,7 @@ function onTabs(list,meta){
     }
     selectTab(sel);
   }else{
-    renderTabs();rerender();
+    renderTabs();syncKind();rerender();
     if(admin&&!$('adm').hidden)renderAdmin();
   }
 }
@@ -1473,6 +1509,7 @@ bindNameHint('cn','cj','cjh');
 const obHint=bindNameHint('ob-name','ob-job','ob-hint');
 
 function setView(v){
+  if(v==='party'&&isVote())v='me';
   view=v;
   [...$('vseg').children].forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('lg').hidden=v!=='all';
@@ -1552,8 +1589,28 @@ function renderPartyAdmin(){
     const sel=$('pv-d'+i);
     sel.innerHTML='<option value="">자동</option>'+D.map((d,k)=>`<option value="${k}"${p.override[i]===k?' selected':''}>${d}요일</option>`).join('');
   });
+  fillTimeOpts();
   renderPartyLeaders();
   renderPartyBtns();
+}
+/* 시간 선택: 자동 + 표시 시간(VIS0~24:00) 30분 단위. 요일을 지정했으면 그 요일에 그 시간 가능한 인원도 함께 표시 */
+function fillTimeOpts(){
+  const p=plan||newPlan();
+  const counts=getRec().A.counts;
+  const n=SEND-VIS0;
+  [0,1].forEach(i=>{
+    const sel=$('pv-t'+i);if(!sel)return;
+    const d=p.override[i],cur=p.ovt&&p.ovt[i]!=null?p.ovt[i]:null;
+    const text=t=>lab(t)+(d!=null?` · ${counts[idxOf(d,t)]||0}명`:'');
+    if(sel.options.length!==n+1){
+      let h='<option value="">자동</option>';
+      for(let t=VIS0;t<SEND;t++)h+=`<option value="${t}">${text(t)}</option>`;
+      sel.innerHTML=h;
+    }else{
+      for(let k=0;k<n;k++)sel.options[k+1].textContent=text(VIS0+k);
+    }
+    if(document.activeElement!==sel)sel.value=cur!=null&&cur>=VIS0&&cur<SEND?String(cur):'';
+  });
 }
 function renderPartyLeaders(){
   const w=$('pv-leaders');if(!w||!admin)return;
@@ -1587,13 +1644,22 @@ function renderPartyBtns(){
 }
 $('pv-d0').addEventListener('change',e=>setOverride(0,e.target.value));
 $('pv-d1').addEventListener('change',e=>setOverride(1,e.target.value));
+$('pv-t0').addEventListener('change',e=>setOverrideTime(0,e.target.value));
+$('pv-t1').addEventListener('change',e=>setOverrideTime(1,e.target.value));
+function setOverrideTime(i,v){
+  const p=ensurePlan();
+  if(!p.ovt)p.ovt=[null,null];
+  p.ovt[i]=v===''?null:+v;bump();savePlanSoon();
+  pvMsg('시간을 바꿨습니다. "포스 편성"을 누르면 반영됩니다.');
+  renderParty();renderPartyLeaders();
+}
 function setOverride(i,v){
   const p=ensurePlan();
   const val=v===''?null:+v;
   if(val!=null&&p.override[1-i]===val){pvMsg('1포스와 2포스는 서로 다른 요일이어야 합니다.','err');renderPartyAdmin();return}
   p.override[i]=val;bump();savePlanSoon();
   pvMsg('요일을 바꿨습니다. "포스 편성"을 누르면 반영됩니다.');
-  renderParty();renderPartyLeaders();
+  fillTimeOpts();renderParty();renderPartyLeaders();
 }
 $('pv-leaders').addEventListener('change',e=>{
   const s=e.target.closest('select[data-lp]');if(!s)return;
@@ -1619,7 +1685,7 @@ function doCompose(){
   const p=ensurePlan();
   if(p.confirmed){pvMsg('확정 상태입니다. 확정을 해제한 뒤 다시 편성하세요.','err');return}
   const rec=getRec();
-  if(!rec.days.length){pvMsg('투표한 사람이 없어 편성할 수 없습니다.','err');return}
+  if(!rec.days.length){pvMsg((p.override.some(x=>x!=null)||(p.ovt||[]).some(x=>x!=null))?'지정한 요일·시간에 투표한 사람이 없어 편성할 수 없습니다.':'투표한 사람이 없어 편성할 수 없습니다.','err');return}
   const people=peopleFor(getRec_E(),rec.days,n=>profiles.get(n)||{});
   const L=p.leaders.map((n,i)=>n&&people.some(x=>x.name===n&&(i===0?x.a:x.b))?n:null);
   const res=composeBest(people,rules,L,RAID,rec.days.length,12,Math.floor(Math.random()*2147483647));
@@ -1996,7 +2062,7 @@ function renderAdmin(){
     return;
   }
   const t=curTab();if(!t)return;
-  let h='<div class="sec"><span class="lbl">탭 관리</span><div class="row" style="margin:0"><input id="tn" type="text" maxlength="20" placeholder="탭 이름" style="width:160px" value="'+esc(tnVal)+'"><button data-act="tadd">+ 탭 추가</button><button data-act="tren">현재 탭 이름 변경</button>';
+  let h='<div class="sec"><span class="lbl">탭 관리 <span style="font-weight:400;color:var(--text2)">· 현재 탭 유형: '+KINDS[kindOf(t)]+'</span></span><div class="row" style="margin:0"><input id="tn" type="text" maxlength="20" placeholder="탭 이름" style="width:160px" value="'+esc(tnVal)+'"><select id="tk" aria-label="추가할 탭 유형">'+Object.keys(KINDS).map(k=>`<option value="${k}"${tkVal===k?' selected':''}>${KINDS[k]}</option>`).join('')+'</select><button data-act="tadd">+ 탭 추가</button><button data-act="tren">현재 탭 이름 변경</button>';
   if(pendTabDel)h+=`<span class="askt">"${esc(t.title)}" 탭과 투표, 메모, 편성을 모두 삭제할까요? 되돌릴 수 없습니다.</span><button class="danger" data-act="tdel-yes">탭 삭제</button><button data-act="tdel-no">취소</button>`;
   else if(tabs.length>1)h+='<button class="danger" data-act="tdel">현재 탭 삭제</button>';
   else h+='<span class="lbl">탭은 최소 1개가 필요합니다</span>';
@@ -2016,6 +2082,7 @@ $('admbtn').addEventListener('click',()=>{
 });
 $('adm').addEventListener('input',e=>{if(e.target.id==='tn')tnVal=e.target.value});
 $('adm').addEventListener('change',e=>{
+  if(e.target.id==='tk'){tkVal=e.target.value==='vote'?'vote':'force';return}
   if(admin&&(e.target.id==='cal-y'||e.target.id==='cal-m')){
     const y=+$('cal-y').value,m=+$('cal-m').value;
     if(y>=CALY0&&y<=CALY1&&m>=0&&m<=11){calY=y;calM=m;renderAdmin()}
@@ -2047,7 +2114,7 @@ $('adm').addEventListener('click',async e=>{
       if(tabs.some(x=>x.title===v)){setErrMsg('이미 있는 탭 이름입니다.');return}
       if(act==='tadd'){
         const order=Math.max(0,...tabs.map(x=>x.order||0))+1;
-        const id=await ad.addTab(v,order,tabs.length);
+        const id=await ad.addTab(v,order,tabs.length,tkVal);
         tnVal='';selectTab(id);done('탭을 추가했습니다.');
       }else{
         await ad.renameTab(tabId,v);tnVal='';done('탭 이름을 바꿨습니다.');
@@ -2089,7 +2156,8 @@ $('adm').addEventListener('click',async e=>{
       done(all?'모든 탭의 투표, 메모, 포스 편성을 초기화했습니다.':`"${t.title}" 탭의 투표, 메모, 포스 편성을 초기화했습니다.`);return;
     }
   }catch(err){
-    setErrMsg('처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
+    const denied=err&&(err.code==='permission-denied'||/permission/i.test(String(err.message||'')));
+    setErrMsg(act==='tadd'&&tkVal==='vote'&&denied?'일반투표 탭은 새 firestore.rules를 Firebase에 게시해야 추가됩니다. 규칙을 게시한 뒤 다시 시도하세요.':'처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
   }
 });
 
