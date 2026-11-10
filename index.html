@@ -184,6 +184,40 @@ details p{margin:8px 0 0}
 .lead label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2)}
 .lead .sc{display:flex;flex-direction:column;gap:8px}
 .seg button[hidden]{display:none}
+.seg{flex-wrap:wrap}
+.cell[data-n],.wchip[data-n]{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.cell.blank[data-hk]{cursor:pointer}
+.hqwait.dt{outline:2px dashed var(--accent);outline-offset:-2px}
+.wp{display:inline-flex;flex-wrap:wrap;align-items:center;gap:0 2px;margin:4px 8px 0 0;padding:0 3px 2px;border-radius:8px;background:var(--surface2)}
+.wp .wchip{margin:2px 0 0;background:transparent;padding:2px 6px}
+.wp .wchip.sel{background:var(--accent-bg)}
+.wp small.wsub{margin-left:4px}
+.hqcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin:0 0 10px}
+.hqrow{margin:6px 0 0}
+.hqrow .lbl{display:block;margin:0 0 4px;font-size:12px}
+.cell .mt{position:absolute;top:2px;left:3px;margin:0;font-size:9px;padding:0 4px}
+.cell.hq{padding-top:15px}
+.cell[data-j] .mt{background:rgba(255,255,255,.92);color:#333;border:0}
+.cell[data-j] .mt.sub{background:rgba(0,0,0,.3);color:#fff}
+.hqtw{overflow-x:auto}
+.hqt{width:100%;border-collapse:collapse;font-size:12px}
+.hqt th,.hqt td{border:1px solid var(--border);padding:4px 5px;text-align:left}
+.hqt td:first-child{white-space:nowrap}
+.hqt .jp{white-space:nowrap;font-size:11px;padding:1px 6px}
+.hqt th{background:var(--surface);font-weight:600}
+.hqin{width:100%;min-width:90px;padding:4px 6px;min-height:32px}
+.jp{display:inline-block;padding:1px 8px;border-radius:8px;color:#fff;font-size:12px;background:var(--text3)}
+.jp[data-j="검성"]{background:rgba(34,137,155,.9)}
+.jp[data-j="수호성"]{background:rgba(89,106,170,.9)}
+.jp[data-j="궁성"]{background:rgba(75,147,97,.9)}
+.jp[data-j="살성"]{background:rgba(103,147,67,.9)}
+.jp[data-j="마도성"]{background:rgba(110,91,166,.9)}
+.jp[data-j="치유성"]{background:rgba(169,141,55,.9)}
+.jp[data-j="정령성"]{background:rgba(142,75,160,.9)}
+.jp[data-j="호법성"]{background:rgba(167,107,52,.9)}
+.jp[data-j="권성"]{background:rgba(222,109,109,.9)}
+.mt{font-style:normal;font-size:10px;font-weight:600;margin-left:4px;padding:0 5px;border-radius:6px;background:var(--accent-bg);color:var(--accent-text);vertical-align:1px}
+.mt.sub{background:transparent;border:1px solid var(--border-strong);color:var(--text2);padding:0 4px}
 .pbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}
 #pv-go{background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent);font-weight:600}
 .pmsg{font-size:13px;color:var(--text2)}
@@ -308,6 +342,7 @@ details p{margin:8px 0 0}
     <div class="row" id="addrow" hidden>
       <input id="cn" type="text" maxlength="20" placeholder="캐릭터 로그인 아이디" style="width:190px" autocomplete="off">
       <select id="cj" aria-label="직업"></select>
+      <select id="cm" aria-label="본캐 또는 부캐" hidden><option value="main">본캐</option><option value="sub">부캐</option></select>
       <button id="cadd">추가</button>
       <button id="ccancel">취소</button>
     </div>
@@ -315,7 +350,7 @@ details p{margin:8px 0 0}
     <p class="err" id="cerr"></p>
 
     <div class="row">
-      <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button><button data-v="party">포스 편성</button></div>
+      <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button><button data-v="party">포스 편성</button><button data-v="hq" hidden>포스편성(본부)</button><button data-v="hqm" hidden>포스편성(직접구성)</button></div>
       <span class="lg" id="lg" hidden><i style="background:color-mix(in srgb,var(--ok) 15%,transparent)"></i>적음<i style="background:var(--ok)"></i>많음</span>
       <div class="right">
         <span id="myreset" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap"></span>
@@ -338,6 +373,11 @@ details p{margin:8px 0 0}
       <p class="sum" id="sum"></p>
       <div id="best"></div>
       <div id="dlist"></div>
+    </div>
+
+    <div id="hqview" hidden>
+      <div id="hqv-in"></div>
+      <div id="hqv-out"></div>
     </div>
 
     <div id="partyview" hidden>
@@ -758,12 +798,13 @@ function demoAdapter(){
   ['민수1','지연1'].forEach(nm=>{const b=new Uint8Array(N);[0,2].forEach(d=>{for(let i=38;i<46;i++)b[d*48+i]=1});ent.t1.set(nm,toStr(b))});
   const memo={t1:new Map([['민수',{text:'수요일 저녁 9시 이후가 좋아요',t:Date.now()-3600e3}],['도현',{text:'금요일은 늦게 끝나요',t:Date.now()-7200e3}]]),t2:new Map(),t3:new Map()};
   const plans={t1:null,t2:null,t3:null};
+  const mains={};
   const members={t1:new Set([...pool.slice(0,24),'민수1','지연1','푸른','달빛']),t2:new Set([...pool.slice(0,14),'푸른']),t3:new Set([...pool.slice(0,9)])};
   prof.set('푸른',{job:'궁성',owner:'o_푸른'});prof.set('달빛',{job:'권성',owner:'o_달빛'});
   let settingsJson=null;
   const tabSubs=new Set(),entSubs=new Map(),memoSubs=new Map(),planSubs=new Map(),profSubs=new Set(),setSubs=new Set(),memSubs=new Map();
   const DKEY='regi_demo_v3';
-  const snap=()=>({prof:[...prof],tabs:tabsData,ent:Object.fromEntries(Object.entries(ent).map(([t,m])=>[t,[...m]])),memo:Object.fromEntries(Object.entries(memo).map(([t,m])=>[t,[...m]])),plans,members:Object.fromEntries(Object.entries(members).map(([t,x])=>[t,[...x]])),settingsJson});
+  const snap=()=>({prof:[...prof],tabs:tabsData,ent:Object.fromEntries(Object.entries(ent).map(([t,m])=>[t,[...m]])),memo:Object.fromEntries(Object.entries(memo).map(([t,m])=>[t,[...m]])),plans,members:Object.fromEntries(Object.entries(members).map(([t,x])=>[t,[...x]])),mains:Object.fromEntries(Object.entries(mains).map(([t,x])=>[t,[...x]])),settingsJson});
   const persist=()=>{try{localStorage.setItem(DKEY,JSON.stringify(snap()))}catch(e){}};
   try{
     const o=JSON.parse(localStorage.getItem(DKEY)||'null');
@@ -774,6 +815,7 @@ function demoAdapter(){
       Object.keys(memo).forEach(k=>delete memo[k]);Object.entries(o.memo).forEach(([k,v])=>memo[k]=new Map(v));
       Object.keys(plans).forEach(k=>delete plans[k]);Object.entries(o.plans).forEach(([k,v])=>plans[k]=v);
       Object.keys(members).forEach(k=>delete members[k]);Object.entries(o.members).forEach(([k,v])=>members[k]=new Set(v));
+      Object.keys(mains).forEach(k=>delete mains[k]);Object.entries(o.mains||{}).forEach(([k,v])=>mains[k]=new Set(v));
       settingsJson=o.settingsJson||null;
     }
   }catch(e){}
@@ -786,7 +828,7 @@ function demoAdapter(){
   const nMemo=t=>{persist();(memoSubs.get(t)||new Set()).forEach(cb=>cb(memoList(t)))};
   const nPlan=t=>{persist();(planSubs.get(t)||new Set()).forEach(cb=>cb(plans[t]))};
   const nProf=()=>{persist();profSubs.forEach(cb=>cb(profList()))};
-  const memList=t=>[...(members[t]||new Set())].map(name=>({name}));
+  const memList=t=>[...(members[t]||new Set())].map(name=>({name,main:!!(mains[t]&&mains[t].has(name))}));
   const nMem=t=>{persist();(memSubs.get(t)||new Set()).forEach(cb=>cb(memList(t),{fromCache:false}))};
   const sub=(map,key,cb,init)=>{if(!map.has(key))map.set(key,new Set());map.get(key).add(cb);setTimeout(()=>cb(init()),0);return()=>map.get(key).delete(cb)};
   return {
@@ -796,9 +838,9 @@ function demoAdapter(){
     subscribeMemos:(t,cb)=>sub(memoSubs,t,cb,()=>memoList(t)),
     subscribePlan:(t,cb)=>sub(planSubs,t,cb,()=>plans[t]),
     subscribeMembers(t,cb){if(!memSubs.has(t))memSubs.set(t,new Set());memSubs.get(t).add(cb);setTimeout(()=>cb(memList(t),{fromCache:false}),0);return()=>memSubs.get(t).delete(cb)},
-    async saveMember(t,name){(members[t]||(members[t]=new Set())).add(name);nMem(t)},
-    async deleteMember(t,name){if(members[t])members[t].delete(name);nMem(t)},
-    async getMember(t,name){return !!(members[t]&&members[t].has(name))},
+    async saveMember(t,name,main){(members[t]||(members[t]=new Set())).add(name);if(typeof main==='boolean'){const m=mains[t]||(mains[t]=new Set());if(main)m.add(name);else m.delete(name)}nMem(t)},
+    async deleteMember(t,name){if(members[t])members[t].delete(name);if(mains[t])mains[t].delete(name);nMem(t)},
+    async getMember(t,name){return members[t]&&members[t].has(name)?{main:!!(mains[t]&&mains[t].has(name))}:false},
     subscribeProfiles(cb){profSubs.add(cb);setTimeout(()=>cb(profList()),0);return()=>profSubs.delete(cb)},
     subscribeSettings(cb){setSubs.add(cb);setTimeout(()=>cb(settingsJson),0);return()=>setSubs.delete(cb)},
     async saveEntry(t,name,slots){ent[t].set(name,slots);nEnt(t)},
@@ -812,9 +854,9 @@ function demoAdapter(){
     async saveSettings(json){settingsJson=json;persist();setSubs.forEach(cb=>cb(settingsJson))},
     async savePlan(t,json){plans[t]=json;nPlan(t)},
     async getPlan(t){return plans[t]||null},
-    async clearTab(t,withMembers){ent[t]=new Map();memo[t]=new Map();plans[t]=null;if(withMembers)members[t]=new Set();nEnt(t);nMemo(t);nPlan(t);if(withMembers)nMem(t)},
-    async deleteTab(t){const i=tabsData.findIndex(x=>x.id===t);if(i>=0)tabsData.splice(i,1);delete ent[t];delete memo[t];delete plans[t];delete members[t];nTabs()},
-    async addTab(title,order,hue,kind){const id='t'+Date.now();tabsData.push(kind==='vote'?{id,title,order,hue,kind}:{id,title,order,hue});ent[id]=new Map();memo[id]=new Map();plans[id]=null;members[id]=new Set();nTabs();return id},
+    async clearTab(t,withMembers){ent[t]=new Map();memo[t]=new Map();plans[t]=null;if(withMembers){members[t]=new Set();mains[t]=new Set()}nEnt(t);nMemo(t);nPlan(t);if(withMembers)nMem(t)},
+    async deleteTab(t){const i=tabsData.findIndex(x=>x.id===t);if(i>=0)tabsData.splice(i,1);delete ent[t];delete memo[t];delete plans[t];delete members[t];delete mains[t];nTabs()},
+    async addTab(title,order,hue,kind){const id='t'+Date.now();tabsData.push(kind==='vote'||kind==='hq'?{id,title,order,hue,kind}:{id,title,order,hue});ent[id]=new Map();memo[id]=new Map();plans[id]=null;members[id]=new Set();nTabs();return id},
     async renameTab(id,title){tabsData.find(t=>t.id===id).title=title;nTabs()},
     async seedTabs(){},
     _snap:snap
@@ -848,11 +890,11 @@ async function firebaseAdapter(onErr){
       return F.onSnapshot(planDoc(t),s=>cb(s.exists()?s.data().json:null),onErr);
     },
     subscribeMembers(t,cb){
-      return F.onSnapshot(F.collection(db,'tabs',t,'members'),snap=>cb(snap.docs.map(d=>({name:d.data().name})),{fromCache:snap.metadata.fromCache}),onErr);
+      return F.onSnapshot(F.collection(db,'tabs',t,'members'),snap=>cb(snap.docs.map(d=>({name:d.data().name,main:d.data().main===true})),{fromCache:snap.metadata.fromCache}),onErr);
     },
-    saveMember:(t,name)=>F.setDoc(F.doc(db,'tabs',t,'members',id(name)),{name,updatedAt:F.serverTimestamp()}),
+    saveMember:(t,name,main)=>F.setDoc(F.doc(db,'tabs',t,'members',id(name)),typeof main==='boolean'?{name,main,updatedAt:F.serverTimestamp()}:{name,updatedAt:F.serverTimestamp()}),
     deleteMember:(t,name)=>F.deleteDoc(F.doc(db,'tabs',t,'members',id(name))),
-    async getMember(t,name){const s=await F.getDoc(F.doc(db,'tabs',t,'members',id(name)));return s.exists()},
+    async getMember(t,name){const s=await F.getDoc(F.doc(db,'tabs',t,'members',id(name)));return s.exists()?{main:s.data().main===true}:false},
     subscribeProfiles(cb){
       return F.onSnapshot(F.collection(db,'profiles'),snap=>cb(snap.docs.map(d=>({name:d.data().name,job:d.data().job,owner:d.data().owner}))),onErr);
     },
@@ -881,7 +923,7 @@ async function firebaseAdapter(onErr){
       }
     },
     async deleteTab(t){await this.clearTab(t,true);await F.deleteDoc(F.doc(db,'tabs',t))},
-    async addTab(title,order,hue,kind){const tid='t'+Date.now();await F.setDoc(F.doc(db,'tabs',tid),kind==='vote'?{title,order,hue,kind}:{title,order,hue});return tid},
+    async addTab(title,order,hue,kind){const tid='t'+Date.now();await F.setDoc(F.doc(db,'tabs',tid),kind==='vote'||kind==='hq'?{title,order,hue,kind}:{title,order,hue});return tid},
     renameTab:(tid,title)=>F.updateDoc(F.doc(db,'tabs',tid),{title}),
     async seedTabs(){
       const base=[['t1','성역1',1,0],['t2','본부',2,1],['t3','본캐팟',3,2]];
@@ -931,20 +973,63 @@ const dirty=new Map();
 const grid=$('grid');
 const curTab=()=>tabs.find(t=>t.id===tabId);
 /* 탭 유형: force=성역 포스편성(기본, 기존 탭), vote=일반투표(내 체크·전체 현황만) */
-const KINDS={force:'성역 포스편성',vote:'일반투표'};
-const kindOf=t=>t&&t.kind==='vote'?'vote':'force';
+const KINDS={force:'성역 포스편성',vote:'일반투표',hq:'본부 투표'};
+const kindOf=t=>t&&(t.kind==='vote'||t.kind==='hq')?t.kind:'force';
 const isVote=()=>kindOf(curTab())==='vote';
+const isHq=()=>kindOf(curTab())==='hq';
+const isForce=()=>kindOf(curTab())==='force';
 const saveChars=()=>{if(tabId){tabChars[tabId]=chars;tabCi[tabId]=ci;tabAct[tabId]=[...act]}ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tact',JSON.stringify(tabAct));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]))};
 const bump=()=>{dataVer++;recCache=null};
 const jobOf=n=>{const p=profiles.get(n);return p?p.job:null};
 const dn=n=>{const j=jobOf(n);return j?`${n}(${jshort(j)})`:n};
+/* ---------- 본부 투표: 사람(같은 기기의 캐릭터 묶음)과 본캐 ---------- */
+const HQ_MAXC=3;
+let mainSet=new Set(),peopleCache=null;
+const maxChars=()=>isHq()?HQ_MAXC:MAXC;
+function people(){
+  if(peopleCache&&peopleCache.ver===dataVer)return peopleCache.list;
+  const byKey=new Map();
+  [...members].sort((x,y)=>x.localeCompare(y,'ko')).forEach(n=>{
+    const p=profiles.get(n),key=p&&p.owner?'o:'+p.owner:'n:'+n;
+    if(!byKey.has(key))byKey.set(key,[]);
+    byKey.get(key).push(n);
+  });
+  const list=[];
+  byKey.forEach((names,key)=>{
+    const m=names.find(n=>mainSet.has(n))||names[0];
+    const rest=names.filter(n=>n!==m);
+    const ch=[m].concat(rest.slice(0,HQ_MAXC-1));
+    const b=new Uint8Array(N);
+    ch.forEach(n=>{const e=ents.get(n);if(e)for(let i=0;i<N;i++)if(e[i])b[i]=1});
+    list.push({key,main:m,chars:ch,extra:rest.slice(HQ_MAXC-1),b});
+  });
+  list.sort((x,y)=>x.main.localeCompare(y.main,'ko'));
+  peopleCache={ver:dataVer,list};
+  return list;
+}
+const personOf=n=>people().find(p=>p.chars.includes(n)||p.extra.includes(n))||null;
+const isMainChar=n=>{const p=personOf(n);return !!p&&p.main===n};
+const isMine=n=>chars.includes(n)||(isHq()&&people().some(p=>p.main===n&&p.chars.some(c=>chars.includes(c))));
+async function setMainChar(tid,name){
+  await adReady;
+  const p=personOf(name);
+  const grp=new Set([name].concat(p?p.chars.concat(p.extra):[],(tabChars[tid]||[])));
+  for(const c of grp){
+    if(!members.has(c))continue;
+    const want=c===name;
+    if(want!==mainSet.has(c)||(want&&!isMainChar(c))){await ad.saveMember(tid,c,want);if(want)mainSet.add(c);else mainSet.delete(c)}
+  }
+  bump();
+}
 function setConn(kind,text){const c=$('conn');c.className='conn '+(kind||'');$('connt').textContent=text}
 function setSave(t){$('savebar').textContent=t}
 const bounds=()=>[VIS0,SEND];
 
 /* ---------- 집계 ---------- */
 function agg(){
-  const E=[];ents.forEach((b,n)=>{if(anyVis(b))E.push({n,b})});
+  const E=[];
+  if(isHq())people().forEach(p=>{if(anyVis(p.b))E.push({n:p.main,b:p.b,p})});
+  else ents.forEach((b,n)=>{if(anyVis(b))E.push({n,b})});
   E.sort((x,y)=>x.n.localeCompare(y.n,'ko'));
   const counts=new Uint16Array(N);
   E.forEach(o=>{for(let i=0;i<N;i++)if(o.b[i])counts[i]++});
@@ -980,7 +1065,8 @@ function renderChars(){
   const t=curTab();
   const multi=act.size>1;
   let h=`<span class="lbl">참여 캐릭터${t?' · '+esc(t.title):''}</span>`;
-  chars.forEach((c,i)=>{const on=act.has(c);h+=`<span class="cc${on?' on':''}" data-i="${i}" role="button" aria-pressed="${on}">${esc(dn(c))}</span>`});
+  const hqm=isHq();
+  chars.forEach((c,i)=>{const on=act.has(c);h+=`<span class="cc${on?' on':''}" data-i="${i}" role="button" aria-pressed="${on}">${esc(dn(c))}${hqm?`<em class="mt${isMainChar(c)?'':' sub'}">${isMainChar(c)?'본':'부'}</em>`:''}</span>`});
   if(!chars.length)h+='<span class="lbl">이 탭에서 사용할 캐릭터를 추가하세요</span>';
   let r='',wide=false;
   if(pendCharDel){
@@ -990,24 +1076,27 @@ function renderChars(){
     wide=true;
     r=(multi?`<span class="lbl">"${esc(chars[ci])}"</span>`:'')+`<select id="jsel" aria-label="직업 변경">${jobOpts(jobOf(chars[ci]),false)}</select><button data-act="jsave">직업 저장</button><button data-act="jcancel">취소</button>`;
   }else{
-    r=chars.length<MAXC?'<button id="plus">+ 캐릭터 추가</button>':'<span class="lbl">이 탭에서 최대 '+MAXC+'개</span>';
+    r=chars.length<maxChars()?'<button id="plus">+ 캐릭터 추가</button>':'<span class="lbl">이 탭에서 최대 '+maxChars()+'개</span>';
     if(chars.length){
       r+='<button data-act="cdel" class="danger">캐릭터 삭제</button>';
       r+='<button data-act="jedit">직업 변경</button>';
+      if(hqm&&chars.length>1&&!isMainChar(chars[ci]))r+='<button data-act="setmain" title="선택한 캐릭터를 이 탭의 본캐로 지정합니다">본캐로 지정</button>';
     }
   }
   h+=`<span class="cact${wide?' wide':''}">${r}</span>`;
   if(chars.length){
-    h+='<span class="chint">투표할 캐릭터를 클릭하면 활성화됩니다.'+(multi?' 지금 '+act.size+'개 캐릭터로 동시에 투표되고, 반쪽 색 칸은 일부 캐릭터만 체크된 칸입니다(누르면 모두 체크).':'')+'</span>';
+    h+='<span class="chint">'+(hqm?'본부 투표는 한 사람이 본캐 1개와 부캐를 합쳐 최대 '+HQ_MAXC+'개까지 등록합니다. 활성화한 캐릭터 모두에 같은 체크가 들어가고, 전체 현황에서는 한 사람으로 집계됩니다. ':'')+'투표할 캐릭터를 클릭하면 활성화됩니다.'+(multi?' 지금 '+act.size+'개 캐릭터로 동시에 투표되고, 반쪽 색 칸은 일부 캐릭터만 체크된 칸입니다(누르면 모두 체크).':'')+'</span>';
   }
   $('crow').innerHTML=h;
+  const cm=$('cm');cm.hidden=!hqm;
+  if(hqm&&$('addrow').hidden)cm.value=chars.some(isMainChar)?'sub':'main';
   if(!chars.length&&!pendCharDel)$('addrow').hidden=false;
   renderQuick();
 }
 function renderQuick(){
   const w=$('qa');
   const cand=[...known].filter(n=>profiles.has(n)&&!chars.includes(n)).sort((x,y)=>x.localeCompare(y,'ko'));
-  const show=!$('addrow').hidden&&cand.length&&chars.length<MAXC;
+  const show=!$('addrow').hidden&&cand.length&&chars.length<maxChars();
   w.hidden=!show;
   w.innerHTML=show?'<span class="lbl">다른 탭에서 쓰던 캐릭터:</span>'+cand.map(n=>`<button data-qa="${esc(n)}" style="padding:4px 10px;min-height:32px">${esc(dn(n))} 추가</button>`).join(''):'';
 }
@@ -1042,15 +1131,17 @@ const BG=['transparent','linear-gradient(135deg,var(--accent) 50%,transparent 50
 function cellState(ab,i){let k=0;ab.forEach(b=>{if(b&&b[i])k++});return !k?0:k===ab.length?2:1}
 const hasDay=(b,d)=>{if(!b)return false;for(let s=VIS0;s<SEND;s++)if(b[idxOf(d,s)])return true;return false};
 function rerender(){
+  if(view==='hq'||view==='hqm'){renderHq();return}
   if(view==='party'){renderParty();if(admin){if(!$('pv-leaders').contains(document.activeElement))renderPartyLeaders();fillTimeOpts()}}
   else refresh();
 }
 
 function refresh(){
   if(view==='party'){renderParty();return}
+  if(view==='hq'||view==='hqm'){renderHq();return}
   const A=agg();
   const names=actives(),ab=names.map(n=>ents.get(n)||null);
-  const vote=isVote();
+  const vote=!isForce();
   const pdays=(!vote&&plan&&plan.parties&&plan.days)?[0,1].map(i=>plan.days[i]!=null&&plan.slots[i]!=null?{d:plan.days[i],s:plan.slots[i],n:i+1}:null).filter(Boolean):[];
   const pset=new Map(pdays.map(x=>[idxOf(x.d,x.s),x.n]));
   grid.querySelectorAll('.t').forEach(t=>t.classList.toggle('pk',pdays.some(x=>x.s===+t.dataset.row)));
@@ -1113,17 +1204,17 @@ function renderDayList(A,rdays){
   const cells=D.map((d,i)=>{
     const v=A.days[i].v.slice().sort((x,y)=>x.localeCompare(y,'ko'));
     const rank=rdays.findIndex(x=>x.d===i);
-    return `<div class="dcell${rank===0?' best':''}"><div class="dh">${d}요일<small>${v.length}명</small>${rank>=0?`<em>${rank+1}위</em>`:''}</div>${v.length?`<div class="dn">${v.map(n=>`<span${chars.includes(n)?' class="mine"':''}>${esc(n)}</span>`).join('')}</div>`:'<div class="none">투표한 사람 없음</div>'}</div>`;
+    return `<div class="dcell${rank===0?' best':''}"><div class="dh">${d}요일<small>${v.length}명</small>${rank>=0?`<em>${rank+1}위</em>`:''}</div>${v.length?`<div class="dn">${v.map(n=>`<span${isMine(n)?' class="mine"':''}>${esc(n)}</span>`).join('')}</div>`:'<div class="none">투표한 사람 없음</div>'}</div>`;
   }).join('');
-  w.innerHTML=`<div class="dl"><h3>요일별 투표 인원</h3><p class="dsub">${VIS0===36?'':lab(VIS0)+'~24:00 · '}해당 요일에 1칸 이상 체크한 캐릭터입니다.</p><div class="dgrid">${cells}</div></div>`;
+  w.innerHTML=`<div class="dl"><h3>요일별 투표 인원</h3><p class="dsub">${VIS0===36?'':lab(VIS0)+'~24:00 · '}해당 요일에 1칸 이상 체크한 ${isHq()?'사람(본캐 기준)':'캐릭터'}입니다.</p><div class="dgrid">${cells}</div></div>`;
 }
 function renderNov(){
   const w=$('nov');if(!w)return;
-  if(view==='party'||!membersLoaded){w.hidden=true;return}
-  const names=[...members].filter(n=>!(ents.get(n)&&anyVis(ents.get(n)))).sort((x,y)=>x.localeCompare(y,'ko'));
+  if(view==='party'||view==='hq'||view==='hqm'||!membersLoaded){w.hidden=true;return}
+  const names=isHq()?people().filter(p=>!anyVis(p.b)).map(p=>p.main):[...members].filter(n=>!(ents.get(n)&&anyVis(ents.get(n)))).sort((x,y)=>x.localeCompare(y,'ko'));
   w.hidden=false;
   w.innerHTML=names.length
-    ?`<span>미투표 인원 ${names.length}명:</span> `+names.map(n=>`<span class="nvn${chars.includes(n)?' mine':''}">${esc(dn(n))}</span>`).join('')
+    ?`<span>미투표 인원 ${names.length}명:</span> `+names.map(n=>`<span class="nvn${isMine(n)?' mine':''}">${esc(dn(n))}</span>`).join('')
     :'<span>미투표 인원이 없습니다.</span>';
 }
 function recBanner(rec){
@@ -1136,7 +1227,8 @@ function recBanner(rec){
 }
 function showWho(i){
   const d=i>=BASE?i-BASE:Math.floor(i/48),s=i>=BASE?48:i%48;
-  const who=[];ents.forEach((b,n)=>{if(b[i])who.push(n)});
+  const who=[];
+  if(isHq())people().forEach(p=>{if(p.b[i])who.push(p.main)});else ents.forEach((b,n)=>{if(b[i])who.push(n)});
   who.sort((x,y)=>x.localeCompare(y,'ko'));
   $('sum').textContent=`${curTab().title} · ${D[d]} ${lab(s)} · ${who.length}명: ${who.map(dn).join(', ')||'없음'}`;
 }
@@ -1180,6 +1272,7 @@ function onEntries(list){
 }
 function onMembers(list,meta){
   members=new Set(list.map(x=>x.name));membersLoaded=true;
+  mainSet=new Set(list.filter(x=>x.main).map(x=>x.name));bump();
   if(meta&&!meta.fromCache){
     const keep=chars.filter(n=>members.has(n)||Date.now()-(addedAt.get(tabId+'\u0000'+n)||0)<8000);
     if(keep.length!==chars.length){
@@ -1187,13 +1280,53 @@ function onMembers(list,meta){
       renderChars();renderMyReset();syncMemoUI();
     }
   }
+  if(syncSiblings())afterSiblings();
+  else if(isHq()){renderChars();rerender()}
   renderNov();renderMgr();
 }
+/* 같은 닉네임으로 로그인한 기기는 한 사람: 이 기기가 로그인한 캐릭터들의 owner 를 하나로 합친다(가장 작은 owner 기준, 기기마다 같은 결과) */
+let unifyBusy=false;
+async function unifyOwners(){
+  if(unifyBusy||!profilesLoaded)return false;
+  const mine=new Set();Object.values(tabChars).forEach(a=>(a||[]).forEach(n=>mine.add(n)));
+  const owners=new Set();
+  mine.forEach(n=>{const p=profiles.get(n);if(p&&p.owner)owners.add(p.owner)});
+  if(!owners.size)return false;
+  const canon=[...owners].sort()[0];
+  const stale=new Set([...owners,OWNER]);stale.delete(canon);
+  const fix=[...profiles].filter(([n,p])=>p.owner&&stale.has(p.owner));
+  if(OWNER===canon&&!fix.length)return false;
+  unifyBusy=true;
+  try{
+    await adReady;
+    for(const [n,p] of fix){await ad.saveProfile(n,p.job,canon);profiles.set(n,{job:p.job,owner:canon})}
+    if(OWNER!==canon){OWNER=canon;ls.set('regi_owner',canon)}
+    bump();
+  }catch(e){}
+  finally{unifyBusy=false}
+  return true;
+}
+/* 이 탭에서 같은 사람(owner 같음)의 다른 캐릭터를 이 기기 로그인에 함께 올린다. 본부 투표는 모두 활성화 */
+function syncSiblings(){
+  if(!membersLoaded||!profilesLoaded||!tabId)return false;
+  const mo=new Set([OWNER]);
+  chars.forEach(n=>{const p=profiles.get(n);if(p&&p.owner)mo.add(p.owner)});
+  const cap=maxChars();
+  if(chars.length>=cap)return false;
+  const add=[...members].filter(n=>!chars.includes(n)&&!pendingReg.has(tabId+'\u0000'+n)&&mo.has((profiles.get(n)||{}).owner)).sort((x,y)=>(mainSet.has(y)-mainSet.has(x))||x.localeCompare(y,'ko'));
+  if(!add.length)return false;
+  add.slice(0,cap-chars.length).forEach(n=>{chars.push(n);known.add(n);if(isHq())act.add(n)});
+  ls.set('regi_known',JSON.stringify([...known]));
+  normAct();saveChars();
+  return true;
+}
+function afterSiblings(){renderChars();renderMyReset();syncMemoUI();renderJobFix();rerender()}
 function onProfiles(list){
   const m=new Map();
   list.forEach(p=>{if(p&&p.name&&JOBS.includes(p.job))m.set(p.name,{job:p.job,owner:p.owner||null})});
   profiles=m;profilesLoaded=true;bump();
   renderChars();renderJobFix();renderMemos();renderMgr();rerender();renderQuick();
+  unifyOwners().then(()=>{if(syncSiblings())afterSiblings()}).catch(()=>{});
 }
 function parseRules(json){
   const r=defaultRules();
@@ -1222,7 +1355,7 @@ function onSettings(json){
   if(view==='party'){if(!$('pv-rules').contains(document.activeElement))buildRulesGrid();renderParty()}
   else if(view==='all')refresh();
 }
-function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],ovt:[null,null],parties:null,lay:null,rj:'',seed:0}}
+function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],ovt:[null,null],parties:null,lay:null,rj:'',seed:0,hqo:[null,null],hq:null,hqm:null}}
 function parsePlan(json){
   if(!json)return null;
   try{
@@ -1237,6 +1370,15 @@ function parsePlan(json){
       p.slots=[0,1].map(i=>Number.isInteger(o.slots&&o.slots[i])?o.slots[i]:null);
     }
     if(Array.isArray(o.lay)&&o.lay.length===2&&o.lay.every(a=>Array.isArray(a)&&a.length===10&&a.every(x=>typeof x==='string')))p.lay=o.lay.map(a=>a.slice());
+    if(Array.isArray(o.hqo))p.hqo=[Number.isInteger(o.hqo[0])&&o.hqo[0]>=0&&o.hqo[0]<7?o.hqo[0]:null,Number.isInteger(o.hqo[1])&&o.hqo[1]>=0&&o.hqo[1]<=48?o.hqo[1]:null];
+    const g10=g=>Array.isArray(g)&&g.length===3&&g.every(a=>Array.isArray(a)&&a.length===10&&a.every(x=>typeof x==='string'));
+    const hh=o.hq;
+    if(hh&&g10(hh.g)&&Number.isInteger(hh.d)&&Number.isInteger(hh.s))p.hq={d:hh.d,s:hh.s,seed:Number.isInteger(hh.seed)?hh.seed:0,g:hh.g.map(a=>a.slice()),b:Array.isArray(hh.b)?hh.b.filter(x=>typeof x==='string'):[]};
+    const hm=o.hqm;
+    if(hm&&typeof hm==='object'){
+      const r=hm.res;
+      p.hqm={in:normRows(hm.in),res:r&&g10(r.g)?{rows:normRows(r.rows),seed:Number.isInteger(r.seed)?r.seed:0,g:r.g.map(a=>a.slice())}:null};
+    }
     p.rj=typeof o.rj==='string'?o.rj:'';
     p.seed=Number.isInteger(o.seed)?o.seed:0;
     return p;
@@ -1251,10 +1393,10 @@ function onPlan(json){
 }
 /* 일반투표 탭에서는 '포스 편성' 보기를 숨기고, 그 화면에 있었다면 내 체크로 돌린다 */
 function syncKind(){
-  const v=isVote();
-  const pb=$('vseg').querySelector('[data-v="party"]');
-  if(pb)pb.hidden=v;
-  if(v&&view==='party')setView('me');
+  const k=kindOf(curTab());
+  const show={party:k==='force',hq:k==='hq',hqm:k==='hq'};
+  Object.keys(show).forEach(v=>{const b=$('vseg').querySelector('[data-v="'+v+'"]');if(b)b.hidden=!show[v]});
+  if(show[view]===false)setView('me');
 }
 function selectTab(id){
   flushAll();
@@ -1264,9 +1406,11 @@ function selectTab(id){
   if(unsubP){unsubP();unsubP=null}
   if(unsubMb){unsubMb();unsubMb=null}
   ents=new Map();plan=null;bump();selMove=null;pendClearPlan=false;
-  members=new Set();membersLoaded=false;
+  members=new Set();membersLoaded=false;mainSet=new Set();
   chars=tabChars[id]||(tabChars[id]=[]);ci=Math.min(tabCi[id]||0,Math.max(chars.length-1,0));
-  act=new Set(tabAct[id]||[]);normAct();
+  act=new Set(tabAct[id]||[]);
+  if(kindOf(tabs.find(t=>t.id===id))==='hq'&&!(tabAct[id]&&tabAct[id].length))act=new Set(chars);
+  normAct();
   pendReset=null;pendTabDel=false;status='';pendMy=false;pendCharDel=false;jobEdit=false;
   syncKind();
   renderTabs();renderChars();renderMyReset();renderJobFix();buildGrid();
@@ -1388,6 +1532,7 @@ async function rewritePlan(tid,fn){
   if(p.parties)p.parties=p.parties.map(arr=>[...new Set(arr.map(map).filter(Boolean))]);
   if(p.lay)p.lay=p.lay.map(a=>a.map(n=>n?(map(n)||''):''));
   p.leaders=p.leaders.map(n=>n?map(n):null);
+  if(p.hq){p.hq.g=p.hq.g.map(a=>a.map(n=>n?(map(n)||''):''));p.hq.b=(p.hq.b||[]).map(n=>map(n)).filter(Boolean)}
   if(changed)await ad.savePlan(tid,JSON.stringify(p));
 }
 async function deleteChar(){
@@ -1410,13 +1555,17 @@ async function saveJob(name,job){
 $('crow').addEventListener('click',async e=>{
   const b=e.target.closest('button');
   if(b){
-    if(b.id==='plus'){$('addrow').hidden=false;renderQuick();$('cn').focus();return}
+    if(b.id==='plus'){$('addrow').hidden=false;if(isHq())$('cm').value=chars.some(isMainChar)?'sub':'main';renderQuick();$('cn').focus();return}
     const act=b.dataset.act;
     if(act==='cdel'){pendCharDel=true;jobEdit=false;$('addrow').hidden=true;$('cerr').textContent='';renderChars();return}
     if(act==='cdel-no'){pendCharDel=false;renderChars();return}
     if(act==='cdel-yes'){deleteChar();return}
     if(act==='jedit'){jobEdit=true;pendCharDel=false;renderChars();return}
     if(act==='jcancel'){jobEdit=false;renderChars();return}
+    if(act==='setmain'){
+      try{await setMainChar(tabId,chars[ci])}catch(err){$('cerr').textContent='본캐를 지정하지 못했습니다. 연결을 확인하고 다시 시도하세요.';return}
+      $('cerr').textContent='';renderChars();rerender();return;
+    }
     if(act==='jsave'){
       const j=$('jsel').value;
       try{await saveJob(chars[ci],j)}catch(err){$('cerr').textContent='직업을 저장하지 못했습니다.';return}
@@ -1462,31 +1611,49 @@ function bindNameHint(inId,selId,hintId){
   return upd;
 }
 async function waitProfiles(){for(let i=0;i<20&&!profilesLoaded;i++)await new Promise(r=>setTimeout(r,100))}
-async function registerChar(name,job,tid){
+const pendingReg=new Set();
+async function registerChar(name,job,tid,asMain){
+  const k=(tid||tabId)+'\u0000'+name;
+  pendingReg.add(k);
+  try{return await registerCharInner(name,job,tid,asMain)}finally{pendingReg.delete(k)}
+}
+async function registerCharInner(name,job,tid,asMain){
   tid=tid||tabId;
   const m=validName(name);if(m)return m;
   await waitProfiles();
+  const hq=kindOf(tabs.find(t=>t.id===tid))==='hq';
   const list=tabChars[tid]||(tabChars[tid]=[]);
   if(list.includes(name))return '이미 이 탭에 추가한 캐릭터입니다.';
+  if(hq&&list.length>=HQ_MAXC)return '본부 투표에서는 한 사람이 캐릭터를 최대 '+HQ_MAXC+'개(본캐 1 + 부캐 2)까지 추가할 수 있습니다.';
   if(list.length>=MAXC)return '이 탭에는 캐릭터를 최대 '+MAXC+'개까지 추가할 수 있습니다.';
+  if(profiles.has(name)&&!profiles.get(name).owner){
+    try{await adReady;const pj=profiles.get(name).job;await ad.saveProfile(name,pj,OWNER);profiles.set(name,{job:pj,owner:OWNER});bump()}catch(e){}
+  }
   if(!profiles.has(name)){
     if(!job)return '직업을 선택하세요.';
     try{await adReady;await ad.saveProfile(name,job,OWNER)}
     catch(e){return '등록하지 못했습니다. 연결을 확인하고 다시 시도하세요.'}
     profiles.set(name,{job,owner:OWNER});bump();
   }
-  try{await adReady;await ad.saveMember(tid,name)}
+  const mf=hq?(asMain===undefined?!(tid===tabId&&list.some(isMainChar)):!!asMain):undefined;
+  try{await adReady;await ad.saveMember(tid,name,mf)}
   catch(e){return '등록하지 못했습니다. 연결을 확인하고 다시 시도하세요.'}
-  list.push(name);known.add(name);addedAt.set(tid+'\u0000'+name,Date.now());
-  tabCi[tid]=list.length-1;tabAct[tid]=[name];
-  if(tid===tabId){chars=list;ci=list.length-1;act=new Set([name])}
+  if(hq&&tid===tabId){
+    if(mf){for(const c of list){if(mainSet.has(c)){try{await ad.saveMember(tid,c,false)}catch(e){}mainSet.delete(c)}}mainSet.add(name)}
+    members.add(name);bump();
+  }
+  if(!list.includes(name))list.push(name);known.add(name);addedAt.set(tid+'\u0000'+name,Date.now());
+  tabCi[tid]=list.length-1;tabAct[tid]=hq?[...list]:[name];
+  if(tid===tabId){chars=list;ci=list.length-1;act=new Set(hq?list:[name])}
   ls.set('regi_tact',JSON.stringify(tabAct));
   ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]));
+  try{await unifyOwners()}catch(e){}
+  if(tid===tabId){try{syncSiblings()}catch(e){}}
   return '';
 }
 async function addChar(){
   const er=$('cerr');
-  const msg=await registerChar($('cn').value.trim(),$('cj').value);
+  const msg=await registerChar($('cn').value.trim(),$('cj').value,undefined,isHq()?$('cm').value==='main':undefined);
   if(msg){er.textContent=msg;return}
   er.textContent='';pendMy=false;
   $('cn').value='';$('cj').value='';$('cj').disabled=false;$('cjh').hidden=true;$('addrow').hidden=true;
@@ -1509,19 +1676,483 @@ bindNameHint('cn','cj','cjh');
 const obHint=bindNameHint('ob-name','ob-job','ob-hint');
 
 function setView(v){
-  if(v==='party'&&isVote())v='me';
+  if((v==='party'&&!isForce())||((v==='hq'||v==='hqm')&&!isHq()))v='me';
   view=v;
+  const hqv=v==='hq'||v==='hqm';
   [...$('vseg').children].forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('lg').hidden=v!=='all';
-  $('gridwrap').hidden=v==='party';
+  $('gridwrap').hidden=v==='party'||hqv;
   $('partyview').hidden=v!=='party';
-  $('myreset').hidden=v==='party';
+  $('hqview').hidden=!hqv;
+  $('myreset').hidden=v==='party'||hqv;
   if(v==='party'){buildRulesGrid();renderParty();renderPartyAdmin()}
+  else if(hqv){selHq=null;renderHq(true)}
   else refresh();
 }
 $('vseg').addEventListener('click',e=>{
   const v=e.target.dataset.v;if(!v)return;
   setView(v);
+});
+
+/* ---------- 본부 포스 편성 알고리즘 ----------
+   입력 P: [{chars:[{job}]}]  (chars[0]=본캐, 최대 3개). 출력: 3개 포스, 포스마다 1파티(본캐라인)·2파티 각 {p,c} 목록.
+   - 각 사람은 포스마다 캐릭터 1개만 쓰고, 본캐는 정확히 한 포스에만 들어간다. 캐릭터 2개면 한 포스, 1개면 두 포스를 쉰다.
+   - 한 포스의 본캐는 모두 1파티. 1파티 빈자리는 부캐로 채운다(탱커·서폿 우선). 2파티에는 서폿 1개 이상.
+   - 같은 직업 중복은 대체 인원이 있는 한 피한다. 치유는 앞 포스부터 2개씩 채운다. */
+const HQ_PEN={mainOut:30,noSup1:12,noTank1:8,noSup2:10,dupParty:3,supExtra:4,tankExtra:2,dupPosse:1,heal:[0.6,0.4,0.2],balance:6,skip:0.3,size:0.5};
+const hqRank=j=>TANK_JOBS.includes(j)?0:MELEE_JOBS.includes(j)?1:RANGE_JOBS.includes(j)?2:j==='호법성'?4:j==='치유성'?5:3;
+const hqSup=j=>j==='치유성'||j==='호법성';
+const hqCombos=(n,k)=>{const out=[];const cur=[];(function go(s){if(cur.length===k){out.push(cur.slice());return}for(let i=s;i<n;i++){cur.push(i);go(i+1);cur.pop()}})(0);return out};
+const hqComboMemo=new Map();
+function hqCombosOf(n,k){const key=n+','+k;let v=hqComboMemo.get(key);if(!v){v=hqCombos(n,k);hqComboMemo.set(key,v)}return v}
+function hqPartyPen(items,tank){
+  let pen=0,sup=0,tk=0;const cnt={};
+  items.forEach(o=>{cnt[o.job]=(cnt[o.job]||0)+1;if(hqSup(o.job))sup++;if(TANK_JOBS.includes(o.job))tk++});
+  Object.keys(cnt).forEach(j=>{if(cnt[j]>1)pen+=HQ_PEN.dupParty*(cnt[j]-1)});
+  if(sup>1)pen+=HQ_PEN.supExtra*(sup-1);
+  return {pen,sup,tk};
+}
+/* 한 포스(최대 10캐릭터)를 1파티·2파티로 나눈다. 모든 5명 조합을 점수로 비교한다. */
+function hqSplitRaw(items){
+  const n=items.length,k=Math.min(5,n);
+  let best=null;
+  /* 본캐는 모두 1파티가 원칙이므로 본캐를 고정하고 부캐 조합만 비교한다(본캐가 5명을 넘을 때만 전체 조합) */
+  const mi=[],si=[];items.forEach((o,i)=>(o.main?mi:si).push(i));
+  const combs=mi.length<=k?hqCombosOf(si.length,k-mi.length).map(c=>mi.concat(c.map(x=>si[x]))):hqCombosOf(n,k);
+  for(const comb of combs){
+    const inA=new Array(n).fill(false);comb.forEach(i=>inA[i]=true);
+    const A=[],B=[];items.forEach((o,i)=>(inA[i]?A:B).push(o));
+    let pen=0;
+    B.forEach(o=>{if(o.main)pen+=HQ_PEN.mainOut});
+    const a=hqPartyPen(A),b=hqPartyPen(B);
+    pen+=a.pen+b.pen;
+    if(!a.sup)pen+=HQ_PEN.noSup1;
+    if(!a.tk)pen+=HQ_PEN.noTank1;
+    if(a.tk>1)pen+=HQ_PEN.tankExtra*(a.tk-1);
+    if(B.length&&!b.sup)pen+=HQ_PEN.noSup2;
+    const cnt={};items.forEach(o=>{cnt[o.job]=(cnt[o.job]||0)+1});
+    Object.keys(cnt).forEach(j=>{if(cnt[j]>2)pen+=HQ_PEN.dupPosse*(cnt[j]-2)});
+    if(!best||pen<best.pen-1e-9)best={pen,A:comb.slice()};
+  }
+  return best||{pen:0,A:[]};
+}
+const hqSplitMemo=new Map();
+function hqSplit(items){
+  /* 정렬한 순서로 캐시. items 는 {p,c,job,main} */
+  const idx=items.map((o,i)=>i).sort((x,y)=>(items[y].main-items[x].main)||(hqRank(items[x].job)-hqRank(items[y].job))||(items[x].job<items[y].job?-1:items[x].job>items[y].job?1:0)||(items[x].p-items[y].p));
+  const sorted=idx.map(i=>items[i]);
+  const key=sorted.map(o=>(o.main?'M':'s')+o.job).join(',');
+  let r=hqSplitMemo.get(key);
+  if(!r){r=hqSplitRaw(sorted);if(hqSplitMemo.size>20000)hqSplitMemo.clear();hqSplitMemo.set(key,r)}
+  const inA=new Set(r.A);
+  const A=[],B=[];sorted.forEach((o,i)=>(inA.has(i)?A:B).push(o));
+  return {pen:r.pen,A,B};
+}
+function hqOptions(nc){
+  const out=[];
+  if(nc>=3){[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].forEach(a=>out.push(a))}
+  else if(nc===2){for(let s=0;s<3;s++){const o=[0,1,2].filter(k=>k!==s);out.push((x=>{const a=[-1,-1,-1];a[o[0]]=x[0];a[o[1]]=x[1];return a})([0,1]));out.push((x=>{const a=[-1,-1,-1];a[o[0]]=x[0];a[o[1]]=x[1];return a})([1,0]))}}
+  else if(nc===1){for(let k=0;k<3;k++){const a=[-1,-1,-1];a[k]=0;out.push(a)}}
+  return out;
+}
+function hqEval(P,assign,withParts){
+  const pos=[[],[],[]];
+  P.forEach((pp,p)=>{const a=assign[p];for(let k=0;k<3;k++){const c=a[k];if(c>=0)pos[k].push({p,c,job:pp.chars[c].job,main:c===0?1:0})}});
+  let sc=0;const parts=[],mc=[0,0,0],sz=[0,0,0];
+  for(let k=0;k<3;k++){
+    const r=hqSplit(pos[k]);sc+=r.pen;if(withParts)parts.push(r);
+    mc[k]=pos[k].reduce((t,o)=>t+o.main,0);sz[k]=pos[k].length;
+    const h=pos[k].filter(o=>o.job==='치유성').length;
+    sc+=HQ_PEN.heal[k]*(2-Math.min(2,h));
+  }
+  const dm=Math.max(...mc)-Math.min(...mc);if(dm>1)sc+=HQ_PEN.balance*(dm-1);
+  sc+=HQ_PEN.size*(Math.max(...sz)-Math.min(...sz));
+  P.forEach((pp,p)=>{
+    const a=assign[p],nc=pp.chars.length;
+    if(nc===2){const s=a.indexOf(-1);sc+=HQ_PEN.skip*(2-s)}
+    else if(nc===1){sc+=0.1*a.indexOf(0)}
+  });
+  return withParts?{sc,parts,mc,sz}:sc;
+}
+function hqSolve(P,seed){
+  const rng=mulberry(hashStr('hq|'+(seed||0)));
+  const n=P.length;
+  const opts=P.map(pp=>hqOptions(Math.min(3,pp.chars.length)));
+  const ok=P.map((_,p)=>opts[p].length>0);
+  const RESTARTS=24;
+  let best=null;
+  for(let r=0;r<RESTARTS;r++){
+    const as=P.map((_,p)=>ok[p]?opts[p][Math.floor(rng()*opts[p].length)]:[-1,-1,-1]);
+    let cur=hqEval(P,as);
+    for(let pass=0;pass<8;pass++){
+      let improved=false;
+      const order=[...Array(n).keys()].sort(()=>rng()-0.5);
+      for(const p of order){
+        if(!ok[p])continue;
+        let bo=as[p],bs=cur;
+        for(const o of opts[p]){if(o===as[p])continue;const keep=as[p];as[p]=o;const v=hqEval(P,as);as[p]=keep;if(v<bs-1e-9){bs=v;bo=o}}
+        if(bo!==as[p]){as[p]=bo;cur=bs;improved=true}
+      }
+      if(!improved)break;
+    }
+    if(!best||cur<best.sc-1e-9)best={sc:cur,as:as.map(a=>a.slice())};
+  }
+  const ev=hqEval(P,best.as,true);
+  const key=o=>[hqRank(o.job),o.main?0:1,o.p];
+  const cmp=(x,y)=>{const a=key(x),b=key(y);for(let i=0;i<3;i++)if(a[i]!==b[i])return a[i]-b[i];return 0};
+  const posses=ev.parts.map(r=>({p1:r.A.slice().sort(cmp).map(o=>({p:o.p,c:o.c})),p2:r.B.slice().sort(cmp).map(o=>({p:o.p,c:o.c}))}));
+  return {posses,score:ev.sc,mc:ev.mc,sz:ev.sz,assign:best.as};
+}
+
+/* ---------- 본부 투표: 포스편성(본부) / 포스편성(직접구성) ---------- */
+const HQ_P=10;
+let hqMsg={t:'',k:''},hqCopyMsg='',pendHqClear=null,hqTimer=null,selHq=null,pendHq=false;
+const hqG=()=>view==='hqm'?(plan&&plan.hqm&&plan.hqm.res?plan.hqm.res.g:null):(plan&&plan.hq?plan.hq.g:null);
+const hqCanEdit=()=>admin&&(view==='hq'||view==='hqm')&&!!hqG();
+function hqSay(t,k){hqMsg={t,k:k||''};clearTimeout(hqTimer);if(t)hqTimer=setTimeout(()=>{hqMsg={t:'',k:''};renderHq()},5000);renderHq()}
+const hqWhenText=w=>`${D[w.d]}요일 ${lab(w.s)}`;
+/* 편성할 요일·시간: 관리자가 지정한 값을 따르고, '자동'이면 가능한 사람이 가장 많은 시간 */
+function hqWhen(){
+  const A=agg(),o=(plan&&plan.hqo)||[null,null];
+  const ds=o[0]!=null?[o[0]]:D.map((_,d)=>d);
+  const ss=o[1]!=null?[o[1]]:[...Array(SEND-VIS0).keys()].map(k=>VIS0+k);
+  let best=null;
+  ds.forEach(d=>ss.forEach(s=>{
+    const c=A.counts[idxOf(d,s)]||0;
+    if(!c&&!(o[0]!=null&&o[1]!=null))return;
+    const k0=Math.min(c,HQ_P);
+    if(!best||k0>best.k0||(k0===best.k0&&c>best.c))best={d,s,c,k0};
+  }));
+  return best?{d:best.d,s:best.s,c:best.c}:null;
+}
+function hqPick(w){
+  const i=idxOf(w.d,w.s);
+  const avail=people().filter(p=>p.b[i]).sort((x,y)=>y.chars.length-x.chars.length||x.main.localeCompare(y.main,'ko'));
+  return {chosen:avail.slice(0,HQ_P),wait:avail.slice(HQ_P)};
+}
+const hqCells=(ps,idOf)=>{const f=a=>{const r=a.map(idOf);while(r.length<5)r.push('');return r.slice(0,5)};return f(ps.p1).concat(f(ps.p2))};
+function hqCompose(){
+  const w=hqWhen();
+  if(!w||!w.c){hqSay('이 조건에 가능한 사람이 없어 편성할 수 없습니다.','err');return}
+  const {chosen}=hqPick(w);
+  const P=chosen.map(p=>({chars:p.chars.map(c=>({job:jobOf(c)||'',name:c}))}));
+  const pl=ensurePlan();
+  const seed=pl.hq?pl.hq.seed+1:1;
+  const res=hqSolve(P,seed);
+  pl.hq={d:w.d,s:w.s,seed,g:res.posses.map(ps=>hqCells(ps,o=>P[o.p].chars[o.c].name)),b:chosen.map(p=>p.main)};
+  bump();savePlanSoon();pendHqClear=null;selHq=null;
+  hqSay(`${hqWhenText(w)} 기준 ${chosen.length}명으로 3개 포스를 편성했습니다.`,'ok');
+}
+/* 직접구성 입력: 10행 × 3칸(본캐·부캐·부캐). 닉네임(로그인한 캐릭터) 또는 직업(검성/검 등) */
+const normRows=x=>[...Array(10)].map((_,r)=>[0,1,2].map(c=>{const v=x&&x[r]&&typeof x[r][c]==='string'?x[r][c].trim().slice(0,20):'';return v}));
+function hqTokenInfo(t){
+  const pr=profiles.get(t);
+  if(pr)return {job:pr.job,label:`${t}(${jshort(pr.job)})`,nick:true};
+  const j=JOBS.includes(t)?t:JOBS.includes(t+'성')?t+'성':null;
+  if(j)return {job:j,label:j,nick:false};
+  return {job:'',label:t,nick:true,unknown:true};
+}
+function hqmPeople(rows){
+  const out=[];
+  rows.forEach((r,ri)=>{
+    const ch=[];
+    r.forEach((t,ci)=>{if(t&&ch.length<3)ch.push(Object.assign({id:ri+'.'+ci,token:t},hqTokenInfo(t)))});
+    if(ch.length)out.push({row:ri,chars:ch});
+  });
+  return out;
+}
+function hqmCompose(){
+  const pl=ensurePlan();
+  const rows=normRows(pl.hqm?pl.hqm.in:null);
+  const P=hqmPeople(rows);
+  if(!P.length){hqSay('입력된 캐릭터가 없습니다. 닉네임이나 직업을 입력하세요.','err');return}
+  const seed=pl.hqm&&pl.hqm.res?pl.hqm.res.seed+1:1;
+  const res=hqSolve(P.map(p=>({chars:p.chars.map(c=>({job:c.job}))})),seed);
+  pl.hqm={in:rows,res:{rows:rows.map(r=>r.slice()),seed,g:res.posses.map(ps=>hqCells(ps,o=>P[o.p].chars[o.c].id))}};
+  bump();savePlanSoon();pendHqClear=null;selHq=null;
+  hqSay(`${P.length}명으로 3개 포스를 편성했습니다.`,'ok');
+}
+/* 화면용 셀 설명: {id,label,job,main,mine,title,pk,off} */
+function hqDescName(n,h){
+  const p=personOf(n);
+  const off=!!(h&&p&&!p.b[idxOf(h.d,h.s)]);
+  return {id:n,label:dn(n),job:jobOf(n)||'',main:!!p&&p.main===n,mine:chars.includes(n),title:p?`${dn(p.main)} 님의 캐릭터`:'',pk:p?p.key:n,off};
+}
+function hqDescMap(rows){
+  const m=new Map();
+  hqmPeople(rows).forEach(p=>p.chars.forEach((c,i)=>m.set(c.id,{id:c.id,label:c.label,job:c.job,main:i===0,mine:false,unknown:!!c.unknown,title:`${p.row+1}번 사람`,pk:'r'+p.row})));
+  return m;
+}
+const hqDescOf=id=>{if(view==='hqm'){const r=plan&&plan.hqm&&plan.hqm.res;return r?hqDescMap(r.rows).get(id):null}return hqDescName(id,plan&&plan.hq)};
+const hqCellHTML=(d,k,c,ed)=>{
+  const pos=ed?` data-hk="${k}" data-hc="${c}"`:'';
+  if(!d)return `<div class="cell blank"${pos}></div>`;
+  const dj=JOBS.includes(d.job)?` data-j="${d.job}"`:'';
+  const sel=ed&&selHq&&selHq.name===d.id;
+  return `<div class="cell hq${d.mine?' mine':''}${sel?' sel':''}"${dj}${pos}${ed?` data-n="${esc(d.id)}"`:''} title="${esc(d.title||'')}" style="cursor:${ed?'grab':'default'}"><span class="cn">${esc(d.label)}</span><em class="mt${d.main?'':' sub'}">${d.main?'본':'부'}</em>${d.unknown?'<small class="cb">직업 확인</small>':d.off?'<small class="cb">투표 없음</small>':''}</div>`;
+};
+function hqChecks(ds){
+  const P1=ds.slice(0,5).filter(Boolean),P2=ds.slice(5,10).filter(Boolean);
+  const t=P1.filter(d=>TANK_JOBS.includes(d.job)).length;
+  const s1=P1.filter(d=>hqSup(d.job)),s2=P2.filter(d=>hqSup(d.job));
+  const out=[];
+  out.push(t?`<div class="chk ok">✓ 1파티 탱커 ${t}명</div>`:'<div class="chk ok">ⓘ 1파티 탱커 없음 (딜러로 구성)</div>');
+  out.push(s1.length?`<div class="chk ok">✓ 1파티 서폿 ${s1.map(d=>jshort(d.job)).join('·')}</div>`:'<div class="chk bad">⚠ 1파티 서폿 없음</div>');
+  out.push(P2.length?(s2.length?`<div class="chk ok">✓ 2파티 서폿 ${s2.map(d=>jshort(d.job)).join('·')}</div>`:'<div class="chk bad">⚠ 2파티 서폿 없음</div>'):'');
+  const dup=[];
+  [P1,P2].forEach((pt,k)=>{const c={};pt.forEach(d=>{if(d.job)c[d.job]=(c[d.job]||0)+1});Object.keys(c).forEach(j=>{if(c[j]>1)dup.push(`${k+1}파티 ${j} ${c[j]}명`)})});
+  if(dup.length)out.push(`<div class="chk bad">⚠ 같은 직업 중복: ${dup.join(', ')}</div>`);
+  const seen=new Map();ds.filter(Boolean).forEach(d=>{if(d.pk){if(!seen.has(d.pk))seen.set(d.pk,[]);seen.get(d.pk).push(d)}});
+  const same=[...seen.values()].filter(a=>a.length>1);
+  if(same.length)out.push(`<div class="chk bad">⚠ 같은 사람의 캐릭터가 한 포스에 있음: ${same.map(a=>esc(a.map(d=>d.label).join(', '))).join(' / ')}</div>`);
+  if(ds.slice(5,10).some(d=>d&&d.main))out.push('<div class="chk bad">⚠ 본캐가 2파티에 있음</div>');
+  return out.join('');
+}
+function hqCardsHTML(g,desc,ed){
+  return '<div class="hqcards">'+g.map((cells,k)=>{
+    const ds=cells.map(c=>c?desc(c):null);
+    const n=ds.filter(Boolean).length,mn=ds.filter(d=>d&&d.main).length;
+    const row=(from,lab)=>`<div class="hqrow"><span class="lbl">${lab}</span><div class="pgrid">${ds.slice(from,from+5).map((d,i)=>hqCellHTML(d,k,from+i,ed)).join('')}</div></div>`;
+    return `<div class="pcard"${ed?` data-hk="${k}"`:''}><div class="ph"><b>${k+1}포스</b><span>본캐 ${mn} · 부캐 ${n-mn}</span><span class="cnt">${n}명</span></div>${hqChecks(ds)}<div class="sep"></div>${row(0,'1파티 · 본캐라인')}${row(5,'2파티')}</div>`;
+  }).join('')+'</div>';
+}
+function hqChipHTML(id,d,ed,tag,off){
+  const sel=ed&&selHq&&selHq.name===id;
+  return `<span class="wchip${d.mine?' mine':''}${off?' off':''}${sel?' sel':''}"${ed?` data-n="${esc(id)}" data-p="${tag}"`:''} title="${esc(d.title||'')}">${esc(d.label)}<em class="mt${d.main?'':' sub'}">${d.main?'본':'부'}</em></span>`;
+}
+const HQ_HINT='<p class="hintline" style="margin:0 0 8px">칸 어디든 끌어서 옮기거나, 눌러서 선택한 뒤 옮길 칸(빈칸 포함)이나 바꿀 사람을 누르세요. 포스 밖으로 빼려면 대기·제외 칸으로 옮기세요. 터치 화면은 0.25초 길게 누르면 끌립니다.</p>';
+const jpHTML=d=>d?`<span class="jp"${JOBS.includes(d.job)?` data-j="${d.job}"`:''}>${esc(d.label)}</span><em class="mt${d.main?'':' sub'}">${d.main?'본':'부'}</em>`:'<span class="lbl">쉼</span>';
+function hqText(){
+  let title,g,desc;
+  if(view==='hqm'){
+    const r=plan&&plan.hqm&&plan.hqm.res;if(!r)return '';
+    title='직접구성';g=r.g;const m=hqDescMap(r.rows);desc=id=>m.get(id)||{label:id};
+  }else{
+    const h=plan&&plan.hq;if(!h)return '';
+    title=`본부 ${D[h.d]}요일 ${lab(h.s)}`;g=h.g;desc=hqDescName;
+  }
+  const out=[title];
+  g.forEach((cells,k)=>{
+    const ds=cells.map(c=>c?desc(c).label:'');
+    out.push(`${k+1}포스\n1파티: ${ds.slice(0,5).filter(Boolean).join(' ')}\n2파티: ${ds.slice(5,10).filter(Boolean).join(' ')}`);
+  });
+  return out.join('\n\n');
+}
+function hqMsgHTML(){
+  return (hqMsg.t?`<p class="pmsg${hqMsg.k==='err'?' err':''}" style="margin:0 0 8px">${esc(hqMsg.t)}</p>`:'')+'';
+}
+function hqCopyBar(has){
+  return has?`<div class="copybar"><span class="pmsg">${esc(hqCopyMsg)}</span><button data-hq="copy" style="font-weight:600;background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent)">복사하기</button></div>`:'';
+}
+/* ---- 본부 화면 ---- */
+function hqAdminHTML(){
+  if(!admin)return '';
+  const o=(plan&&plan.hqo)||[null,null];
+  const A=agg();
+  const dsel='<option value="">자동</option>'+D.map((d,k)=>`<option value="${k}"${o[0]===k?' selected':''}>${d}요일</option>`).join('');
+  let tsel='<option value="">자동</option>';
+  for(let s=VIS0;s<SEND;s++){
+    const c=o[0]!=null?A.counts[idxOf(o[0],s)]:null;
+    tsel+=`<option value="${s}"${o[1]===s?' selected':''}>${lab(s)}${c!=null?` (${c}명)`:''}</option>`;
+  }
+  const has=!!(plan&&plan.hq);
+  const btns='<button id="hq-go" data-hq="go">포스 편성</button>'+(has?(pendHqClear==='hq'?'<span class="askt">편성을 지울까요?</span><button class="danger" data-hq="clear-yes">지우기</button><button data-hq="clear-no">취소</button>':'<button data-hq="clear">편성 지우기</button>'):'');
+  return `<div class="pv-sec"><h3>시간 지정 <span>자동은 가능한 사람이 가장 많은 요일·시간입니다 · 10명이 넘으면 캐릭터가 많은 사람부터 편성하고 나머지는 대기</span></h3><div class="lead"><label>요일<select id="hq-d" aria-label="본부 요일">${dsel}</select></label><label>시간<select id="hq-t" aria-label="본부 시간">${tsel}</select></label></div></div><div class="pbar">${btns}</div>`;
+}
+function hqOutHTML(){
+  const h=plan&&plan.hq,ed=hqCanEdit()&&view==='hq';
+  const A=agg();
+  let top='';
+  const w=h?{d:h.d,s:h.s}:hqWhen();
+  const ppl0=people();
+  if(h){
+    const {chosen,wait}=hqPick(h);
+    const inG0=new Set(h.g.flat().filter(Boolean));
+    const fresh=new Set(chosen.map(p=>p.main));
+    const stale=!!(h.b&&h.b.length)&&(fresh.size!==h.b.length||h.b.some(n=>!fresh.has(n)));
+    top+=`<p class="plan" style="margin:0 0 8px">${hqWhenText(h)} · 가능 ${chosen.length+wait.length}명 중 ${ppl0.filter(p=>p.chars.concat(p.extra).some(n=>inG0.has(n))).length}명 편성${wait.length?` · 대기 ${wait.length}명`:''}</p>`;
+    if(admin&&stale)top+='<div class="warnline">투표가 바뀌어 현재 가능한 인원이 편성과 다릅니다. "포스 편성"을 다시 누르면 반영됩니다.</div>';
+  }else if(w&&w.c){
+    top+=`<p class="plan" style="margin:0 0 8px">${admin?'편성 전입니다. ':'아직 편성되지 않았습니다. '}${hqWhenText(w)}에 ${w.c}명이 가능합니다${w.c<HQ_P?` (${HQ_P}명 미만)`:''}.</p>`;
+  }else top+='<p class="plan" style="margin:0 0 8px">아직 투표한 사람이 없습니다</p>';
+  let body='';
+  if(h){
+    body+=hqCardsHTML(h.g,n=>hqDescName(n,h),ed);
+    const inG=new Set(h.g.flat().filter(Boolean));
+    const ppl=ppl0.filter(p=>p.chars.concat(p.extra).some(n=>inG.has(n)));
+    const at=(p,k)=>{const n=p.chars.concat(p.extra).find(x=>h.g[k].includes(x));return n?hqDescName(n,h):null};
+    body+='<div class="pv-sec"><h3>사람별 배정 <span>본캐는 한 포스에만 들어갑니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>사람(본캐)</th><th>1포스</th><th>2포스</th><th>3포스</th></tr></thead><tbody>'+
+      ppl.map(p=>`<tr><td>${esc(dn(p.main))}</td>${[0,1,2].map(k=>`<td>${jpHTML(at(p,k))}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
+    const i=idxOf(h.d,h.s);
+    const waitAll=ppl0.filter(p=>anyVis(p.b)&&!p.chars.concat(p.extra).some(n=>inG.has(n)));
+    const days=p=>D.filter((_,d)=>hasDay(p.b,d)).join('·');
+    const removed=ed?ppl.flatMap(p=>p.chars.filter(n=>!inG.has(n))):[];
+    body+=`<div class="wait hqwait"><b>대기 ${waitAll.length}명</b>${waitAll.length?'<br>':' <span class="wsub">(없음)</span>'}`+waitAll.map(p=>ed
+      ?`<span class="wp">${p.chars.map(n=>hqChipHTML(n,hqDescName(n,h),true,'w',!p.b[i])).join('')}${p.b[i]?'':`<small class="wsub">${days(p)}</small>`}</span>`
+      :`<span class="wchip${p.b[i]?'':' off'}${isMine(p.main)?' mine':''}">${esc(dn(p.main))}${p.b[i]?'':'<small>'+days(p)+'</small>'}</span>`).join('')+
+      (removed.length?`<br><span class="wsub">편성에서 뺀 캐릭터 ${removed.length}개:</span> `+removed.map(n=>hqChipHTML(n,hqDescName(n,h),true,'w',false)).join(''):'')+'</div>';
+  }
+  const nv=ppl0.filter(p=>!anyVis(p.b));
+  if(membersLoaded)body+=`<div class="wait hqwait"><b>미투표 ${nv.length}명</b>${nv.length?'<br>':' <span class="wsub">(없음)</span>'}`+nv.map(p=>ed
+    ?`<span class="wp">${p.chars.map(n=>hqChipHTML(n,hqDescName(n,h),true,'n',true)).join('')}</span>`
+    :`<span class="wchip off${isMine(p.main)?' mine':''}">${esc(dn(p.main))}</span>`).join('')+'</div>';
+  return hqMsgHTML()+top+hqCopyBar(!!h)+(ed?HQ_HINT:'')+body;
+}
+/* ---- 직접구성 화면 ---- */
+function hqmInputHTML(){
+  if(!admin)return '';
+  const rows=normRows(plan&&plan.hqm?plan.hqm.in:null);
+  const names=[...members].sort((x,y)=>x.localeCompare(y,'ko'));
+  const dl='<datalist id="hq-dl">'+JOBS.map(j=>`<option value="${j}">`).join('')+names.map(n=>`<option value="${esc(n)}">`).join('')+'</datalist>';
+  const ph=['본캐','부캐','부캐'];
+  const body=rows.map((r,ri)=>`<tr><td>${ri+1}</td>${r.map((v,ci)=>`<td><input class="hqin" data-r="${ri}" data-c="${ci}" list="hq-dl" maxlength="20" autocomplete="off" placeholder="캐릭터${ci+1}(${ph[ci]})" value="${esc(v)}"></td>`).join('')}</tr>`).join('');
+  const has=!!(plan&&plan.hqm&&plan.hqm.res);
+  const btns='<button id="hq-go" data-hq="mgo">포스 편성</button>'+(has?(pendHqClear==='hqm'?'<span class="askt">편성 결과를 지울까요?</span><button class="danger" data-hq="mclear-yes">지우기</button><button data-hq="clear-no">취소</button>':'<button data-hq="mclear">결과 지우기</button>'):'')+(pendHqClear==='rows'?'<span class="askt">입력한 내용을 모두 지울까요?</span><button class="danger" data-hq="mrows-yes">지우기</button><button data-hq="clear-no">취소</button>':'<button data-hq="mrows">입력 지우기</button>');
+  return `<div class="pv-sec"><h3>직접 구성 <span>사람마다 캐릭터 최대 3개: 닉네임 또는 직업(예: 검성, 치유)을 입력하세요 · 첫 칸이 본캐 · 비운 칸은 캐릭터가 없는 것으로 봅니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>#</th><th>본캐</th><th>부캐</th><th>부캐</th></tr></thead><tbody>${body}</tbody></table></div>${dl}<p class="hintline" style="margin:8px 0 0">입력은 자동 저장되고 모든 기기에서 같이 보입니다. 캐릭터가 2개인 사람은 한 포스를 쉬고 최대한 채웁니다.</p></div><div class="pbar">${btns}</div>`;
+}
+function hqmOutHTML(){
+  const m=plan&&plan.hqm,r=m&&m.res;
+  let top='';
+  if(!r){
+    return hqMsgHTML()+(admin?'<p class="plan" style="margin:0 0 8px">입력을 마치고 "포스 편성"을 누르세요.</p>':'<div class="pcard"><p class="cand" style="margin:0">아직 직접 구성한 편성이 없습니다. 관리자가 편성하면 이곳에 결과가 표시됩니다.</p></div>');
+  }
+  const ed=hqCanEdit()&&view==='hqm';
+  const P=hqmPeople(r.rows);
+  if(admin&&JSON.stringify(normRows(m.in))!==JSON.stringify(r.rows))top+='<div class="warnline">입력이 편성한 뒤에 바뀌었습니다. "포스 편성"을 다시 누르면 반영됩니다. (직접 옮긴 배치는 다시 편성하면 새로 계산됩니다)</div>';
+  const map=hqDescMap(r.rows);
+  const desc=id=>map.get(id)||{id,label:id,job:'',main:false,pk:id};
+  let body=hqCardsHTML(r.g,desc,ed);
+  const at=(p,k)=>{const c=p.chars.find(c=>r.g[k].includes(c.id));return c?map.get(c.id):null};
+  body+='<div class="pv-sec"><h3>사람별 배정 <span>본캐는 한 포스에만 들어갑니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>사람</th><th>1포스</th><th>2포스</th><th>3포스</th></tr></thead><tbody>'+
+    P.map(p=>`<tr><td>${p.row+1}번</td>${[0,1,2].map(k=>`<td>${jpHTML(at(p,k))}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
+  if(ed){
+    const inG=new Set(r.g.flat().filter(Boolean));
+    const out=P.flatMap(p=>p.chars.filter(c=>!inG.has(c.id)));
+    body+=`<div class="wait hqwait"><b>제외된 캐릭터 ${out.length}개</b>${out.length?'<br>':' <span class="wsub">(없음)</span>'}`+out.map(c=>hqChipHTML(c.id,map.get(c.id),true,'w',false)).join('')+'</div>';
+  }
+  const unk=P.flatMap(p=>p.chars).filter(c=>c.unknown).map(c=>c.token);
+  if(unk.length)top+=`<div class="warnline">직업을 알 수 없는 입력: ${esc(unk.join(', '))} · 등록된 캐릭터 닉네임이나 직업 이름으로 입력하세요(직업 없는 캐릭터는 딜러 자리로 편성됩니다).</div>`;
+  return hqMsgHTML()+top+hqCopyBar(true)+(ed?HQ_HINT:'')+body;
+}
+function renderHq(force){
+  if(view!=='hq'&&view!=='hqm')return;
+  if(dg&&dg.cfg===hqDragCfg&&Date.now()-dg.t0<20000){pendHq=true;return}
+  const inEl=$('hqv-in');
+  const ae=document.activeElement;
+  const busy=inEl.contains(ae)&&/INPUT|SELECT/.test(ae.tagName);
+  if(force||!busy)inEl.innerHTML=view==='hq'?hqAdminHTML():hqmInputHTML();
+  $('hqv-out').innerHTML=view==='hq'?hqOutHTML():hqmOutHTML();
+}
+$('hqview').addEventListener('change',e=>{
+  if(!admin)return;
+  if(e.target.id==='hq-d'||e.target.id==='hq-t'){
+    const pl=ensurePlan();if(!pl.hqo)pl.hqo=[null,null];
+    const v=e.target.value;
+    pl.hqo[e.target.id==='hq-d'?0:1]=v===''?null:+v;
+    bump();savePlanSoon();renderHq(true);
+  }
+});
+$('hqview').addEventListener('input',e=>{
+  if(!admin||!e.target.classList.contains('hqin'))return;
+  const pl=ensurePlan();
+  const rows=normRows(pl.hqm?pl.hqm.in:null);
+  rows[+e.target.dataset.r][+e.target.dataset.c]=e.target.value.trim().slice(0,20);
+  pl.hqm=Object.assign(pl.hqm||{},{in:rows});if(!pl.hqm.res)pl.hqm.res=null;
+  savePlanSoon();
+  $('hqv-out').innerHTML=hqmOutHTML();
+});
+/* 선택(클릭)한 사람의 현재 위치로 이동 출발점을 만든다 */
+function hqSrcOf(name){
+  const g=hqG();
+  if(g)for(let k=0;k<3;k++){const c=g[k].indexOf(name);if(c>=0)return {name,k,c}}
+  return {name,w:true};
+}
+function hqTargetAt(x,y){
+  const el=document.elementFromPoint(x,y);if(!el)return null;
+  const m=el.closest('.cell[data-hk],.wchip[data-n]');
+  if(m){
+    if(m.dataset.hk!=null){
+      const k=+m.dataset.hk,c=+m.dataset.hc;
+      return m.dataset.n?{kind:'member',name:m.dataset.n,k,c,el:m}:{kind:'blank',k,c,el:m};
+    }
+    return {kind:'member',name:m.dataset.n,w:true,el:m};
+  }
+  const card=el.closest('.pcard[data-hk]');if(card)return {kind:'card',k:+card.dataset.hk,el:card};
+  const w=el.closest('.hqwait');if(w)return {kind:'wait',el:w};
+  return null;
+}
+/* 칸 이동: 같은 포스 안·다른 포스·빈칸·사람 위(맞교환), 대기·제외 칸으로 빼기, 대기에서 넣기 */
+function hqApplyMove(src,tgt){
+  const g=hqG();if(!g)return;
+  const find=name=>{for(let k=0;k<3;k++){const c=g[k].indexOf(name);if(c>=0)return {k,c}}return null};
+  let from=null;
+  if(!src.w){
+    from=g[src.k]&&g[src.k][src.c]===src.name?{k:src.k,c:src.c}:find(src.name);
+    if(!from)return;
+  }else{const f=find(src.name);if(f)g[f.k][f.c]=''}
+  if(tgt.kind==='wait'||(tgt.kind==='member'&&tgt.w)){
+    if(!from)return;
+    g[from.k][from.c]='';
+  }else if(tgt.kind==='member'){
+    if(tgt.name===src.name)return;
+    let to=g[tgt.k]&&g[tgt.k][tgt.c]===tgt.name?{k:tgt.k,c:tgt.c}:find(tgt.name);
+    if(!to)return;
+    g[to.k][to.c]=src.name;
+    if(from)g[from.k][from.c]=tgt.name;
+  }else if(tgt.kind==='blank'){
+    if(g[tgt.k][tgt.c]!=='')return;
+    if(from)g[from.k][from.c]='';
+    g[tgt.k][tgt.c]=src.name;
+  }else if(tgt.kind==='card'){
+    if(from&&from.k===tgt.k)return;
+    const bi=g[tgt.k].indexOf('');
+    if(bi<0){hqSay('포스가 가득 찼습니다. 바꿀 사람 위에 놓으세요.','err');return}
+    if(from)g[from.k][from.c]='';
+    g[tgt.k][bi]=src.name;
+  }else return;
+  bump();savePlanSoon();hqMsg={t:'',k:''};
+}
+const hqDragCfg={
+  canEdit:()=>hqCanEdit(),
+  srcOf:el=>el.dataset.hk!=null?{name:el.dataset.n,k:+el.dataset.hk,c:+el.dataset.hc}:{name:el.dataset.n,w:true},
+  label:s=>{const d=hqDescOf(s.name);return d?d.label:s.name},
+  targetAt:hqTargetAt,
+  drop:(src,t)=>{selHq=null;hqApplyMove(src,t);renderHq()}
+};
+$('hqview').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-hq]');
+  if(!b){
+    if(suppressClick||!hqCanEdit()||e.target.closest('button,select,input'))return;
+    const t=hqTargetAt(e.clientX,e.clientY);
+    if(!t)return;
+    if(!selHq){
+      if(t.kind==='member'){selHq={name:t.name};renderHq()}
+      return;
+    }
+    if(t.kind==='member'&&t.name===selHq.name){selHq=null;renderHq();return}
+    const sel=selHq;selHq=null;
+    const k0=hqSrcOf(sel.name);
+    hqApplyMove(k0,t);renderHq();
+    return;
+  }
+  const a=b.dataset.hq;
+  if(a==='copy'){
+    const t=hqText();
+    if(!t)return;
+    copyPlan(t,b.parentElement.querySelector('.pmsg'));
+    return;
+  }
+  if(!admin)return;
+  const pl=ensurePlan();
+  if(a==='go'){hqCompose();return}
+  if(a==='mgo'){hqmCompose();return}
+  if(a==='clear'){pendHqClear='hq';renderHq(true);return}
+  if(a==='mclear'){pendHqClear='hqm';renderHq(true);return}
+  if(a==='mrows'){pendHqClear='rows';renderHq(true);return}
+  if(a==='clear-no'){pendHqClear=null;renderHq(true);return}
+  if(a==='clear-yes'){pl.hq=null;pendHqClear=null;bump();savePlanSoon();renderHq(true);return}
+  if(a==='mclear-yes'){if(pl.hqm)pl.hqm.res=null;pendHqClear=null;bump();savePlanSoon();renderHq(true);return}
+  if(a==='mrows-yes'){pl.hqm=Object.assign(pl.hqm||{},{in:normRows(null)});if(!pl.hqm.res)pl.hqm.res=null;pendHqClear=null;bump();savePlanSoon();renderHq(true);return}
 });
 
 /* ---------- 포스 편성 화면 ---------- */
@@ -1822,9 +2453,9 @@ function closeCopyBox(){$('cbx').hidden=true}
 $('cbx-x').addEventListener('click',closeCopyBox);
 $('cbx').addEventListener('click',e=>{if(e.target===$('cbx'))closeCopyBox()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cbx').hidden)closeCopyBox()});
-async function copyPlan(){
-  const t=planText();
-  const m=$('pv-copymsg');
+async function copyPlan(txt,msgEl){
+  const t=typeof txt==='string'?txt:planText();
+  const m=msgEl||$('pv-copymsg');
   if(!t){m.textContent='복사할 편성이 없습니다.';return}
   let ok=false,manual=false;
   /* 1) 클립보드 API(https). 클릭 처리 중 바로 호출해야 아이폰에서도 허용된다 */
@@ -1841,7 +2472,7 @@ async function copyPlan(){
   m.className='pmsg'+(ok?'':' err');
   clearTimeout(copyPlan.t);copyPlan.t=setTimeout(()=>{m.textContent=''},manual?6000:2500);
 }
-$('pv-copy').addEventListener('click',copyPlan);
+$('pv-copy').addEventListener('click',()=>copyPlan());
 function renderParty(){
   if(view!=='party')return;
   if(dg&&Date.now()-dg.t0<20000){pendParty=true;return}
@@ -1976,42 +2607,84 @@ function applyMove(src,tgt){
   plan.parties=Lay.map(a=>a.filter(Boolean));
   bump();savePlanSoon();pvMsg('');
 }
-$('partyview').addEventListener('pointerdown',e=>{
-  const g=e.target.closest('[data-drag]');
-  if(!g||!canEdit())return;
-  const m=g.closest('[data-n]');
-  dg={name:m.dataset.n,p:m.dataset.p,x:e.clientX,y:e.clientY,ghost:null,pid:e.pointerId,grip:g,t0:Date.now()};
-  try{g.setPointerCapture(e.pointerId)}catch(err){}
-  e.preventDefault();
-});
-$('partyview').addEventListener('pointermove',e=>{
-  if(!dg||e.pointerId!==dg.pid)return;
-  if(!dg.ghost){
-    if(Math.hypot(e.clientX-dg.x,e.clientY-dg.y)<6)return;
-    const gh=document.createElement('div');gh.className='ghost';gh.textContent=dn(dg.name);
-    document.body.appendChild(gh);dg.ghost=gh;
-  }
-  dg.ghost.style.left=(e.clientX+12)+'px';dg.ghost.style.top=(e.clientY+12)+'px';
-  autoScroll(e.clientY);
-  document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'));
-  const t=targetAt(e.clientX,e.clientY);
-  if(t&&t.el)t.el.classList.add('dt');
-});
+/* ---- 끌어 옮기기 공통(성역 포스편성·본부 편성) ----
+   마우스: 칸 어디서든 6px 이상 움직이면 끌기 시작. 터치: 칸을 0.25초 누르고 있으면 끌기 시작(그 전에 움직이면 화면 스크롤).
+   ⋮ 손잡이는 터치에서도 바로 끌린다. 가볍게 누르기만 하면 '눌러서 선택 → 옮길 곳 누르기'로 동작한다. */
+const DRAG_SEL='.cell[data-n],.wchip[data-n],.mem[data-n]';
+const DRAG_HOLD=250;
+function dragGhost(d){
+  if(d.ghost)return;
+  const gh=document.createElement('div');gh.className='ghost';gh.textContent=d.cfg.label(d.src);
+  gh.style.left=(d.lx+12)+'px';gh.style.top=(d.ly+12)+'px';
+  document.body.appendChild(gh);d.ghost=gh;
+}
+function bindDrag(root,cfg){
+  root.addEventListener('pointerdown',e=>{
+    if(dg||e.button>0||!cfg.canEdit())return;
+    if(e.target.closest('button,select,input,textarea,a'))return;
+    const el=e.target.closest(DRAG_SEL);if(!el)return;
+    const src=cfg.srcOf(el);if(!src)return;
+    const grip=!!e.target.closest('[data-drag]'),touch=e.pointerType==='touch';
+    const d=dg={src,cfg,el,x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,ghost:null,pid:e.pointerId,t0:Date.now(),touch,armed:!touch||grip,timer:null};
+    if(d.armed){
+      try{el.setPointerCapture(e.pointerId)}catch(err){}
+      e.preventDefault();
+    }else{
+      d.timer=setTimeout(()=>{
+        if(dg!==d)return;
+        d.armed=true;
+        try{el.setPointerCapture(d.pid)}catch(err){}
+        dragGhost(d);
+        try{if(navigator.vibrate)navigator.vibrate(12)}catch(err){}
+      },DRAG_HOLD);
+    }
+  });
+  root.addEventListener('pointermove',e=>{
+    const d=dg;
+    if(!d||d.cfg!==cfg||e.pointerId!==d.pid)return;
+    d.lx=e.clientX;d.ly=e.clientY;
+    if(!d.armed){
+      if(Math.hypot(e.clientX-d.x,e.clientY-d.y)>10){clearTimeout(d.timer);dg=null}
+      return;
+    }
+    if(!d.ghost){
+      if(Math.hypot(e.clientX-d.x,e.clientY-d.y)<6)return;
+      dragGhost(d);
+    }
+    d.ghost.style.left=(e.clientX+12)+'px';d.ghost.style.top=(e.clientY+12)+'px';
+    autoScroll(e.clientY);
+    document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'));
+    const t=cfg.targetAt(e.clientX,e.clientY);
+    if(t&&t.el)t.el.classList.add('dt');
+  });
+  root.addEventListener('pointerup',e=>endDrag(e,false));
+  root.addEventListener('pointercancel',e=>endDrag(e,true));
+  root.addEventListener('touchmove',e=>{if(dg&&dg.cfg===cfg&&dg.armed&&e.cancelable)e.preventDefault()},{passive:false});
+  root.addEventListener('contextmenu',e=>{if(dg&&dg.cfg===cfg&&dg.touch)e.preventDefault()});
+}
 function endDrag(e,cancel){
-  if(!dg||(e&&e.pointerId!==dg.pid))return;
-  const d=dg;dg=null;stopAutoScroll();
+  const d=dg;
+  if(!d||(e&&e.pointerId!==d.pid))return;
+  dg=null;clearTimeout(d.timer);stopAutoScroll();
   document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'));
   if(d.ghost){
     d.ghost.remove();suppressClick=true;setTimeout(()=>{suppressClick=false},0);
-    if(!cancel&&canEdit()){
-      const t=targetAt(e.clientX,e.clientY);
-      if(t){applyMove({name:d.name,p:d.p},t);renderParty()}
+    if(!cancel&&d.cfg.canEdit()){
+      const t=d.cfg.targetAt(e.clientX,e.clientY);
+      if(t)d.cfg.drop(d.src,t);
     }
   }
   if(pendParty){pendParty=false;renderParty()}
+  if(pendHq){pendHq=false;renderHq()}
 }
-$('partyview').addEventListener('pointerup',e=>endDrag(e,false));
-$('partyview').addEventListener('pointercancel',e=>endDrag(e,true));
+bindDrag($('partyview'),{
+  canEdit:()=>canEdit(),
+  srcOf:el=>({name:el.dataset.n,p:el.dataset.p}),
+  label:s=>dn(s.name),
+  targetAt,
+  drop:(src,t)=>{applyMove({name:src.name,p:src.p},t);renderParty()}
+});
+bindDrag($('hqview'),hqDragCfg);
 $('partyview').addEventListener('click',e=>{
   if(suppressClick||!canEdit())return;
   if(e.target.closest('button,select,input,.grip'))return;
@@ -2082,7 +2755,7 @@ $('admbtn').addEventListener('click',()=>{
 });
 $('adm').addEventListener('input',e=>{if(e.target.id==='tn')tnVal=e.target.value});
 $('adm').addEventListener('change',e=>{
-  if(e.target.id==='tk'){tkVal=e.target.value==='vote'?'vote':'force';return}
+  if(e.target.id==='tk'){tkVal=['vote','hq'].includes(e.target.value)?e.target.value:'force';return}
   if(admin&&(e.target.id==='cal-y'||e.target.id==='cal-m')){
     const y=+$('cal-y').value,m=+$('cal-m').value;
     if(y>=CALY0&&y<=CALY1&&m>=0&&m<=11){calY=y;calM=m;renderAdmin()}
@@ -2157,7 +2830,7 @@ $('adm').addEventListener('click',async e=>{
     }
   }catch(err){
     const denied=err&&(err.code==='permission-denied'||/permission/i.test(String(err.message||'')));
-    setErrMsg(act==='tadd'&&tkVal==='vote'&&denied?'일반투표 탭은 새 firestore.rules를 Firebase에 게시해야 추가됩니다. 규칙을 게시한 뒤 다시 시도하세요.':'처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
+    setErrMsg(act==='tadd'&&(tkVal==='vote'||tkVal==='hq')&&denied?KINDS[tkVal]+' 탭은 새 firestore.rules를 Firebase에 게시해야 추가됩니다. 규칙을 게시한 뒤 다시 시도하세요.':'처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
   }
 });
 
@@ -2179,7 +2852,7 @@ function renderMgr(){
     const j=jobOf(n);
     if(mgrEdit===n)h+=`<span class="pi"><input id="men" type="text" maxlength="20" value="${esc(n)}" style="width:120px;min-height:30px;padding:3px 8px"><select id="mjob" style="min-height:30px">${jobOpts(j||'',true)}</select><button data-mg="save" data-n="${esc(n)}">저장</button><button data-mg="no">취소</button></span>`;
     else if(mgrDel===n)h+=`<span class="pi ask">${esc(dn(n))} 삭제?<button data-mg="del-yes" data-n="${esc(n)}">예</button><button data-mg="del-no">아니오</button></span>`;
-    else h+=`<span class="pi">${esc(dn(n))}<button data-mg="edit" data-n="${esc(n)}" aria-label="${esc(n)} 수정">수정</button><button data-mg="del" data-n="${esc(n)}" aria-label="${esc(n)} 삭제">삭제</button></span>`;
+    else h+=`<span class="pi">${esc(dn(n))}${isHq()?`<em class="mt${isMainChar(n)?'':' sub'}">${isMainChar(n)?'본':'부'}</em>${isMainChar(n)?'':`<button data-mg="main" data-n="${esc(n)}" aria-label="${esc(n)} 본캐로 지정">본캐 지정</button>`}`:''}<button data-mg="edit" data-n="${esc(n)}" aria-label="${esc(n)} 수정">수정</button><button data-mg="del" data-n="${esc(n)}" aria-label="${esc(n)} 삭제">삭제</button></span>`;
   });
   h+='</div><p class="err" id="mgr-err" style="margin:8px 0 0"></p><p class="ok" id="mgr-ok">'+esc(mgrMsg)+'</p>';
   w.innerHTML=h;
@@ -2192,6 +2865,7 @@ $('mgr-body').addEventListener('click',async e=>{
   try{
     if(a==='edit'){mgrEdit=n;mgrDel=null;mgrMsg='';renderMgr();return}
     if(a==='no'){mgrEdit=null;renderMgr();return}
+    if(a==='main'){await setMainChar(tabId,n);mgrMsg=`"${n}" 캐릭터를 본캐로 지정했습니다.`;renderMgr();renderChars();rerender();return}
     if(a==='del'){mgrDel=n;mgrEdit=null;mgrMsg='';renderMgr();return}
     if(a==='del-no'){mgrDel=null;renderMgr();return}
     if(a==='del-yes'){
@@ -2235,7 +2909,8 @@ async function renameChar(old,nv,job,oldProf){
       await ad.deleteMemo(t.id,old);
     }
     await rewritePlan(t.id,n=>n===old?nv:n);
-    if(await ad.getMember(t.id,old)){await ad.saveMember(t.id,nv);await ad.deleteMember(t.id,old)}
+    const mo=await ad.getMember(t.id,old);
+    if(mo){await ad.saveMember(t.id,nv,t.kind==='hq'?!!mo.main:undefined);await ad.deleteMember(t.id,old)}
   }
   const tp=profiles.get(nv);
   await ad.saveProfile(nv,tp?tp.job:job,tp?tp.owner:(oldProf?oldProf.owner:OWNER));
