@@ -102,6 +102,26 @@ header h1{font-size:19px;font-weight:600;margin:0;flex:1}
 .c.pk{outline:3px solid var(--pk);outline-offset:-3px;z-index:1}
 .c.pk::after{content:attr(data-pk);position:absolute;top:0;left:3px;font-size:10px;line-height:1.2;font-weight:700;color:var(--pk)}
 .h.pk{box-shadow:inset 0 -3px 0 var(--pk)}
+.h .dd,.h .dw{white-space:nowrap}
+@media (max-width:560px){.h .dd,.h .dw{display:block}.h .dw{font-size:12px;font-weight:500}}
+.calbtn.on{background:var(--accent-bg);border-color:var(--accent)}
+.cal{margin:10px 0 0;padding:10px 12px 12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:12px;max-width:340px}
+.cal-h{display:flex;align-items:center;gap:6px;margin:0 0 6px}
+.cal-h select{min-height:32px;padding:3px 6px;font-weight:600}
+.cal-h .sp{flex:1}
+.cal-h button{min-height:32px;min-width:36px;padding:0 8px;font-size:12px;line-height:1}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+.cal-w{font-size:12px;font-weight:600;text-align:center;padding:4px 0;color:var(--text2)}
+.cal .cd{border:0;background:transparent;border-radius:0;min-height:36px;padding:0;font-size:14px;color:var(--text);position:relative;transform:none}
+.cal .cd:hover{background:var(--surface2)}
+.cal .cd.o{color:var(--text3)}
+.cal .cd.w{background:var(--accent-bg);border-top:2px solid var(--accent);border-bottom:2px solid var(--accent)}
+.cal .cd.wl{border-left:2px solid var(--accent);border-top-left-radius:10px;border-bottom-left-radius:10px}
+.cal .cd.wr{border-right:2px solid var(--accent);border-top-right-radius:10px;border-bottom-right-radius:10px}
+.cal .cd.td span{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700}
+.cal-f{display:flex;gap:6px;margin:8px 0 0;flex-wrap:wrap;align-items:center}
+.cal-f button{min-height:32px;padding:3px 12px;font-size:13px}
+.cal-n{font-size:12px;color:var(--text2);margin:6px 0 0}
 .t.pk{color:var(--pk);font-weight:700}
 .sum{font-size:14px;color:var(--text2);margin:10px 0 0;min-height:22px}
 .box{margin:12px 0 0;padding:14px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}
@@ -214,6 +234,8 @@ details p{margin:8px 0 0}
 .pgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:42px;padding:5px 3px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface2);font-size:13px;line-height:1.25;word-break:break-all;cursor:pointer}
 .cell.blank{background:transparent;border-style:dashed;border-color:var(--border);cursor:default}
+.cell.blank[data-c]{cursor:pointer}
+.cell.blank.dt{background:var(--accent-bg);border-style:solid;border-color:var(--accent)}
 .cell.mine{border-color:var(--accent)}
 .cell.mine .cn{font-weight:700;color:var(--accent-text)}
 .cell.sel,.cell.dt{background:var(--accent-bg);border-color:var(--accent)}
@@ -329,7 +351,8 @@ details p{margin:8px 0 0}
       <div class="cbx" id="cbx" hidden role="dialog" aria-modal="true" aria-label="편성 복사"><div class="cbx-in"><p id="cbx-p">이 환경에서는 자동 복사가 막혀 있습니다. 아래 글을 길게 눌러 전체 선택한 뒤 복사하세요.</p><textarea id="cbx-t" readonly rows="9"></textarea><div class="cbx-b"><button id="cbx-sel">전체 선택</button><button id="cbx-x">닫기</button></div></div></div>
       <div class="parties" id="pv-cards"></div>
       <div class="wait" id="pv-wait"></div>
-      <p class="hintline" id="pv-hint" hidden>끌어서 옮기거나, 사람을 눌러 선택한 뒤 바꿀 사람(또는 포스, 대기 칸)을 누르세요.</p>
+      <div class="wait" id="pv-nov"></div>
+      <p class="hintline" id="pv-hint" hidden>끌어서 옮기거나, 사람을 눌러 선택한 뒤 옮길 칸(빈칸 포함)이나 바꿀 사람을 누르세요. 포스 밖으로 빼려면 대기·미투표 칸으로 옮기세요.</p>
     </div>
 
     <section class="memosec" id="memosec">
@@ -506,7 +529,7 @@ const groupOf=job=>GROUPS.find(g=>g.jobs.includes(job));
 const ADMIN_CODE='0000';
 const MAXC=5;
 const RAID=10;
-let VIS0=36;
+let VIS0=36,WK=null;
 const N=343;
 const BASE=336;
 const SEND=49;
@@ -514,6 +537,30 @@ const idxOf=(d,s)=>s<48?d*48+s:BASE+d;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lab=s=>String(Math.floor(s/2)).padStart(2,'0')+':'+(s%2?'30':'00');
+/* ---------- 주차 표시: 일정표는 수요일 시작 ~ 화요일. 시작 날짜(수요일)를 설정에 저장해 모든 기기에 공유 ---------- */
+const DAYMS=86400000,CALY0=1970,CALY1=2100;
+const p2=n=>String(n).padStart(2,'0');
+const ymdOf=ms=>{const d=new Date(ms);return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate())};
+const wedStart=ms=>ms-((new Date(ms).getUTCDay()+4)%7)*DAYMS;
+function parseWK(json){
+  try{
+    const o=JSON.parse(json),v=o&&o._wk;
+    const m=typeof v==='string'&&/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if(m&&+m[1]>=CALY0&&+m[1]<=CALY1){const ms=Date.UTC(+m[1],+m[2]-1,+m[3]);if(ymdOf(ms)===v)return ymdOf(wedStart(ms))}
+  }catch(e){}
+  return null;
+}
+function wkMs(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(WK||'');return m?Date.UTC(+m[1],+m[2]-1,+m[3]):null}
+function dayHead(d){
+  const s=wkMs();
+  if(s==null)return D[d];
+  return `<span class="dd">${new Date(s+d*DAYMS).getUTCDate()}일</span><span class="dw">(${D[d]})</span>`;
+}
+function wkText(short){
+  const s=wkMs();if(s==null)return '';
+  const a=new Date(s),b=new Date(s+6*DAYMS);
+  return short?`${a.getUTCMonth()+1}/${a.getUTCDate()}~${b.getUTCMonth()+1}/${b.getUTCDate()}`:`${a.getUTCMonth()+1}/${a.getUTCDate()}(수) ~ ${b.getUTCMonth()+1}/${b.getUTCDate()}(화)`;
+}
 const toBits=s=>{const b=new Uint8Array(N);if(typeof s==='string')for(let i=0;i<N&&i<s.length;i++)b[i]=s.charCodeAt(i)===49?1:0;return b};
 const toStr=b=>{let n=BASE;for(let i=BASE;i<N;i++)if(b[i])n=N;let s='';for(let i=0;i<n;i++)s+=b[i]?'1':'0';return s};
 const anyBit=b=>{for(let i=0;i<N;i++)if(b[i])return true;return false};
@@ -865,6 +912,7 @@ let profiles=new Map(),profilesLoaded=false;
 const defaultRules=()=>{const r={};GROUPS.forEach(g=>r[g.key]={on:false,mode:'exact',n:1});r['수호성']={on:true,mode:'min',n:1};r['치유성']={on:true,mode:'max',n:2};r['검성']={on:true,mode:'min',n:1};return r};
 let rules=defaultRules();
 let plan=null,planSaving=null,planTimer=null,setTimer=null,setSaving=false;
+let calOpen=false,calY=0,calM=0;
 let selMove=null,pendClearPlan=false,mgrEdit=null,mgrDel=null,mgrMsg='';
 let dataVer=0,recCache=null;
 const dirty=new Map();
@@ -1006,10 +1054,10 @@ function refresh(){
     h.classList.remove('best','second');
     h.classList.toggle('pk',pdays.some(q=>q.d===d));
     if(view==='all'){
-      h.innerHTML=`${D[d]}<small>${x.v.length}명</small>`;
+      h.innerHTML=`${dayHead(d)}<small>${x.v.length}명</small>`;
       if(rdays[0]&&rdays[0].d===d)h.classList.add('best');
       else if(rdays[1]&&rdays[1].d===d)h.classList.add('second');
-    }else h.textContent=D[d];
+    }else h.innerHTML=dayHead(d);
   });
   const tt=curTab()?curTab().title:'';
   renderNov();
@@ -1139,13 +1187,15 @@ function onSettings(json){
     rules=parseRules(json);
     const vf=parseVF(json);
     if(vf!==VIS0){VIS0=vf;rebuilt=true}
+    const wk=parseWK(json);
+    if(wk!==WK){WK=wk;rebuilt=true}
   }
   bump();
   if(rebuilt){buildGrid();if(admin&&!$('adm').hidden)renderAdmin()}
   if(view==='party'){if(!$('pv-rules').contains(document.activeElement))buildRulesGrid();renderParty()}
   else if(view==='all')refresh();
 }
-function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],parties:null,rj:'',seed:0}}
+function newPlan(){return {confirmed:false,leaders:[null,null],days:null,slots:null,override:[null,null],parties:null,lay:null,rj:'',seed:0}}
 function parsePlan(json){
   if(!json)return null;
   try{
@@ -1158,6 +1208,7 @@ function parsePlan(json){
       p.days=[0,1].map(i=>Number.isInteger(o.days&&o.days[i])?o.days[i]:null);
       p.slots=[0,1].map(i=>Number.isInteger(o.slots&&o.slots[i])?o.slots[i]:null);
     }
+    if(Array.isArray(o.lay)&&o.lay.length===2&&o.lay.every(a=>Array.isArray(a)&&a.length===10&&a.every(x=>typeof x==='string')))p.lay=o.lay.map(a=>a.slice());
     p.rj=typeof o.rj==='string'?o.rj:'';
     p.seed=Number.isInteger(o.seed)?o.seed:0;
     return p;
@@ -1299,6 +1350,7 @@ async function rewritePlan(tid,fn){
   let changed=false;
   const map=n=>{const m=fn(n);if(m!==n)changed=true;return m};
   if(p.parties)p.parties=p.parties.map(arr=>[...new Set(arr.map(map).filter(Boolean))]);
+  if(p.lay)p.lay=p.lay.map(a=>a.map(n=>n?(map(n)||''):''));
   p.leaders=p.leaders.map(n=>n?map(n):null);
   if(changed)await ad.savePlan(tid,JSON.stringify(p));
 }
@@ -1471,7 +1523,7 @@ function saveRulesSoon(){
 async function flushSettings(){
   if(!setPending)return;
   clearTimeout(setTimer);setPending=false;
-  try{await ad.saveSettings(JSON.stringify(Object.assign({},rules,{_vf:VIS0})))}catch(e){pvMsg('규칙을 저장하지 못했습니다.','err')}
+  try{await ad.saveSettings(JSON.stringify(Object.assign({},rules,{_vf:VIS0},WK?{_wk:WK}:{})))}catch(e){pvMsg('규칙을 저장하지 못했습니다.','err')}
   setSaving=false;
 }
 function ensurePlan(){if(!plan)plan=newPlan();return plan}
@@ -1559,7 +1611,7 @@ $('pv-btns').addEventListener('click',e=>{
   if(a==='clear-no'){pendClearPlan=false;renderPartyBtns();return}
   if(a==='clear-yes'){
     pendClearPlan=false;
-    plan.parties=null;plan.days=null;plan.slots=null;plan.confirmed=false;plan.rj='';selMove=null;
+    plan.parties=null;plan.lay=null;plan.days=null;plan.slots=null;plan.confirmed=false;plan.rj='';selMove=null;
     savePlanSoon();pvMsg('편성을 지웠습니다.');renderParty();renderPartyBtns();
   }
 });
@@ -1572,6 +1624,7 @@ function doCompose(){
   const L=p.leaders.map((n,i)=>n&&people.some(x=>x.name===n&&(i===0?x.a:x.b))?n:null);
   const res=composeBest(people,rules,L,RAID,rec.days.length,12,Math.floor(Math.random()*2147483647));
   p.parties=[0,1].map(i=>res.members[i].map(x=>x.name));
+  p.lay=null;
   p.days=[rec.days[0]?rec.days[0].d:null,rec.days[1]?rec.days[1].d:null];
   p.slots=[rec.days[0]?rec.days[0].s:null,rec.days[1]?rec.days[1].s:null];
   p.leaders=L;
@@ -1598,18 +1651,20 @@ function layoutForce(names,seed,jobFn){
   const B=names.filter(n=>jb(n)==='호법성').sort(byRank);
   const U=names.filter(n=>!jb(n)||![...TANK_JOBS,...MELEE_JOBS,...RANGE_JOBS,'치유성','호법성'].includes(jb(n)));
   const take=(lists,k)=>{const out=[];for(const L of lists){while(L.length&&out.length<k)out.push(L.shift())}return out};
+  /* 1열: 탱커>근접>원거리 / 2~4열(딜러칸): 딜러>호법 / 5열(치유칸): 치유>호법.
+     호법은 딜러칸을 먼저 채우므로, 치유칸이 비어 있어도 딜러칸에 자리가 있으면 거기에 들어간다. */
   const c1=take([T,M,R],2);
-  const c5=take([H,B],2);
   const dealers=M.concat(R,U).sort(byRank);
   M.length=0;R.length=0;U.length=0;
-  const mids=take([dealers,B,T,H],6);
+  const mids=take([dealers,B],6);
+  const c5=take([H,B],2);
   const cells=new Array(10).fill(null);
   const P1=[0,5],P5=[4,9],PM=[1,2,3,6,7,8];
   c1.forEach((n,i)=>cells[P1[i]]=n);
   c5.forEach((n,i)=>cells[P5[i]]=n);
   mids.forEach((n,i)=>cells[PM[i]]=n);
   const rest=take([dealers,B,T,H],10);
-  [...P1,...P5].forEach(i=>{if(cells[i]==null&&rest.length)cells[i]=rest.shift()});
+  [...PM,...P1,...P5].forEach(i=>{if(cells[i]==null&&rest.length)cells[i]=rest.shift()});
   return [cells.slice(0,5),cells.slice(5,10)];
 }
 function getRec_E(){return agg().E}
@@ -1627,18 +1682,30 @@ function cardChecks(pi,members){
   [...seen.values()].filter(a=>a.length>1).forEach(a=>out.push(`<div class="chk bad">⚠ 같은 사람의 캐릭터가 같은 포스에 있음: ${esc(a.map(dn).join(', '))}</div>`));
   return out.join('');
 }
+/* 포스별 10칸 배치. 관리자가 직접 옮긴 배치(plan.lay)가 현재 인원과 일치하면 그대로 쓰고, 아니면 규칙 배치로 계산한다. */
+function layoutCells(pi){
+  const set=plan.parties[pi];
+  const L=plan.lay&&plan.lay[pi];
+  if(L&&L.length===10){
+    const ne=L.filter(Boolean);
+    if(ne.length===set.length&&new Set(ne).size===ne.length&&ne.every(n=>set.includes(n)))return L.map(n=>n||null);
+  }
+  const rows=layoutForce(set,plan.seed||0);
+  return rows[0].concat(rows[1]);
+}
+function ensureLay(){plan.lay=[0,1].map(pi=>layoutCells(pi).map(n=>n||''))}
 function forceCells(pi,editable,day,other){
   const L=plan.leaders[pi];
-  const rows=layoutForce(plan.parties[pi],plan.seed||0);
-  return '<div class="pgrid">'+rows.map(r=>r.map(n=>{
-    if(!n)return '<div class="cell blank"></div>';
+  const cells=layoutCells(pi);
+  return '<div class="pgrid">'+cells.map((n,c)=>{
+    if(!n)return editable?`<div class="cell blank" data-p="${pi}" data-c="${c}"></div>`:'<div class="cell blank"></div>';
     const mine=chars.includes(n);
     const ld=L===n?'<span class="ld">★</span>':'';
     const jj=jobOf(n),dj=JOBS.includes(jj)?` data-j="${jj}"`:'';
     if(!editable&&!admin)return `<div class="cell${mine?' mine':''}"${dj} data-n="${esc(n)}" style="cursor:default"><span class="cn">${ld}${esc(n)}</span></div>`;
     const av=availAt(n,day),both=other&&av&&availAt(n,other);
-    return `<div class="cell${mine?' mine':''}${selMove&&selMove.name===n?' sel':''}"${dj} data-n="${esc(n)}" data-p="${pi}">${editable?'<span class="grip" data-drag="1" title="끌어서 이동">⋮</span>':''}<span class="cn">${ld}${esc(n)}</span>${av?'':'<small class="cb">투표 없음</small>'}${both?'<small class="cb2">양쪽 가능</small>':''}</div>`;
-  }).join('')).join('')+'</div>';
+    return `<div class="cell${mine?' mine':''}${selMove&&selMove.name===n?' sel':''}"${dj} data-n="${esc(n)}" data-p="${pi}" data-c="${c}">${editable?'<span class="grip" data-drag="1" title="끌어서 이동">⋮</span>':''}<span class="cn">${ld}${esc(n)}</span>${av?'':'<small class="cb">투표 없음</small>'}${both?'<small class="cb2">양쪽 가능</small>':''}</div>`;
+  }).join('')+'</div>';
 }
 function planText(){
   if(!(plan&&plan.parties))return '';
@@ -1646,7 +1713,8 @@ function planText(){
   const out=[];
   [0,1].forEach(pi=>{
     const day=days[pi];if(!day)return;
-    const rows=layoutForce(plan.parties[pi],plan.seed||0).map(r=>r.filter(Boolean).join(' ')).filter(Boolean);
+    const cells=layoutCells(pi);
+    const rows=[cells.slice(0,5),cells.slice(5,10)].map(r=>r.filter(Boolean).join(' ')).filter(Boolean);
     out.push([`${pi+1}포스 ${D[day.d]}요일 ${lab(day.s)}`].concat(rows).join('\n'));
   });
   return out.join('\n\n');
@@ -1718,7 +1786,7 @@ function renderParty(){
   $('pv-copybar').hidden=!composed;
   if(!admin){
     $('pv-top').innerHTML='';
-    $('pv-wait').hidden=true;$('pv-wait').innerHTML='';$('pv-hint').hidden=true;$('pv-msgwrap').textContent='';
+    $('pv-wait').hidden=true;$('pv-wait').innerHTML='';$('pv-nov').hidden=true;$('pv-nov').innerHTML='';$('pv-hint').hidden=true;$('pv-msgwrap').textContent='';
     if(!composed){
       $('pv-cards').innerHTML='<div class="pcard" style="grid-column:1/-1"><p class="cand" style="margin:0">아직 포스 편성이 되지 않았습니다. 관리자가 편성하면 이곳에 결과가 표시됩니다.</p></div>';
       return;
@@ -1776,6 +1844,14 @@ function renderParty(){
       return `<span class="wchip${f?'':' off'}${chars.includes(n)?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="w">${editable?'<span class="grip" data-drag="1">⋮⋮</span>':''}${esc(dn(n))}${f?'':`<small>${dayList(n)}</small>`}</span>`;
     }).join('');
   }else wl.hidden=true;
+  /* 미투표 인원: 이 탭의 캐릭터 중 투표한 칸이 없는 사람. 편성 후 필요하면 포스로 옮길 수 있다. */
+  const nv=$('pv-nov');
+  if(composed&&membersLoaded){
+    const inP2=new Set(plan.parties.flat());
+    const nn=[...members].filter(n=>!inP2.has(n)&&!(ents.get(n)&&anyVis(ents.get(n)))).sort((x,y)=>x.localeCompare(y,'ko'));
+    nv.hidden=false;
+    nv.innerHTML=`<b>미투표 ${nn.length}명</b>${nn.length?'<br>':' <span class="wsub">(없음)</span>'}`+nn.map(n=>`<span class="wchip off${chars.includes(n)?' mine':''}${selMove&&selMove.name===n?' sel':''}" data-n="${esc(n)}" data-p="n">${editable?'<span class="grip" data-drag="1">⋮⋮</span>':''}${esc(dn(n))}</span>`).join('');
+  }else{nv.hidden=true;nv.innerHTML=''}
   $('pv-hint').hidden=!editable;
   renderPartyBtns();
 }
@@ -1792,37 +1868,46 @@ function stopAutoScroll(){scrollDir=0;if(scrollTimer){clearInterval(scrollTimer)
 function targetAt(x,y){
   const el=document.elementFromPoint(x,y);if(!el)return null;
   const m=el.closest('.cell[data-n],.mem[data-n],.wchip[data-n]');
-  if(m)return {kind:'member',name:m.dataset.n,p:m.dataset.p,el:m};
+  if(m)return {kind:'member',name:m.dataset.n,p:m.dataset.p,c:m.dataset.c==null?-1:+m.dataset.c,el:m};
+  const bl=el.closest('.cell.blank[data-c]');
+  if(bl)return {kind:'blank',p:bl.dataset.p,c:+bl.dataset.c,el:bl};
   const c=el.closest('.pcard[data-pi]');
   if(c)return {kind:'card',p:c.dataset.pi,el:c};
-  const w=el.closest('#pv-wait');
+  const w=el.closest('#pv-wait,#pv-nov');
   if(w)return {kind:'wait',el:w};
   return null;
 }
+/* 칸 단위 이동. src.p: '0'/'1'=포스, 'w'=대기, 'n'=미투표. 같은 포스 안, 다른 포스, 빈칸, 사람 위(맞교환) 모두 가능하다. */
 function applyMove(src,tgt){
-  const P=plan.parties;
-  const rm=(pi,n)=>{P[pi]=P[pi].filter(x=>x!==n)};
-  if(tgt.kind==='wait'){
-    if(src.p==='w')return;
-    rm(+src.p,src.name);
+  ensureLay();
+  const Lay=plan.lay;
+  const sp=(src.p==='0'||src.p==='1')?+src.p:-1;
+  const si=sp>=0?Lay[sp].indexOf(src.name):-1;
+  if(sp>=0&&si<0)return;
+  if(sp<0)Lay.forEach(a=>{const k=a.indexOf(src.name);if(k>=0)a[k]=''});
+  const tp=(tgt.p==='0'||tgt.p==='1')?+tgt.p:-1;
+  if(tgt.kind==='wait'||(tgt.kind==='member'&&tp<0)){
+    if(sp<0)return;
+    Lay[sp][si]='';
   }else if(tgt.kind==='member'){
     if(tgt.name===src.name)return;
-    if(tgt.p==='w'){
-      if(src.p==='w')return;
-      rm(+src.p,src.name);
-    }else{
-      const dpi=+tgt.p;
-      if(src.p==='w'){rm(dpi,tgt.name);P[dpi].push(src.name)}
-      else if(+src.p===dpi)return;
-      else{rm(+src.p,src.name);rm(dpi,tgt.name);P[dpi].push(src.name);P[+src.p].push(tgt.name)}
-    }
+    const ti=tgt.c>=0&&Lay[tp][tgt.c]===tgt.name?tgt.c:Lay[tp].indexOf(tgt.name);
+    if(ti<0)return;
+    Lay[tp][ti]=src.name;
+    if(sp>=0)Lay[sp][si]=tgt.name;
+  }else if(tgt.kind==='blank'){
+    if(tp<0||Lay[tp][tgt.c]!=='')return;
+    if(sp>=0)Lay[sp][si]='';
+    Lay[tp][tgt.c]=src.name;
   }else if(tgt.kind==='card'){
-    const dpi=+tgt.p;
-    if(src.p!=='w'&&+src.p===dpi)return;
-    if(P[dpi].length>=RAID){pvMsg('포스가 가득 찼습니다. 바꿀 사람 위에 놓으세요.','err');return}
-    if(src.p!=='w')rm(+src.p,src.name);
-    P[dpi].push(src.name);
+    const dp=+tgt.p;
+    if(sp===dp)return;
+    const bi=Lay[dp].indexOf('');
+    if(bi<0){pvMsg('포스가 가득 찼습니다. 바꿀 사람 위에 놓으세요.','err');return}
+    if(sp>=0)Lay[sp][si]='';
+    Lay[dp][bi]=src.name;
   }else return;
+  plan.parties=Lay.map(a=>a.filter(Boolean));
   bump();savePlanSoon();pvMsg('');
 }
 $('partyview').addEventListener('pointerdown',e=>{
@@ -1882,9 +1967,27 @@ function done(m){status=m;renderAdmin()}
 function setAdmin(on){
   admin=on;
   if(on)ls.set('regi_admin','1');else{ls.set('regi_admin','');ss.del('regi_admin')}
-  pendReset=null;pendTabDel=false;mgrEdit=null;mgrDel=null;status='';
+  pendReset=null;pendTabDel=false;mgrEdit=null;mgrDel=null;status='';calOpen=false;
   renderAdmin();renderMgr();renderMemos();
   if(view==='party'){renderParty();renderPartyAdmin()}
+}
+function calHTML(){
+  const y=calY,m=calM;
+  const first=Date.UTC(y,m,1),gs=first-new Date(first).getUTCDay()*DAYMS;
+  const n=new Date(),today=Date.UTC(n.getFullYear(),n.getMonth(),n.getDate());
+  const ws=wkMs(),we=ws==null?null:ws+6*DAYMS;
+  let yo='';for(let k=CALY0;k<=CALY1;k++)yo+=`<option value="${k}"${k===y?' selected':''}>${k}년</option>`;
+  const mo=[...Array(12)].map((_,k)=>`<option value="${k}"${k===m?' selected':''}>${k+1}월</option>`).join('');
+  let cells=['일','월','화','수','목','금','토'].map(w=>`<div class="cal-w">${w}</div>`).join('');
+  for(let i=0;i<42;i++){
+    const ms=gs+i*DAYMS,d=new Date(ms),col=i%7;
+    const cls=['cd'];
+    if(d.getUTCMonth()!==m)cls.push('o');
+    if(ms===today)cls.push('td');
+    if(ws!=null&&ms>=ws&&ms<=we){cls.push('w');if(col===0||ms===ws)cls.push('wl');if(col===6||ms===we)cls.push('wr')}
+    cells+=`<button type="button" class="${cls.join(' ')}" data-act="cal-pick" data-ms="${ms}" aria-label="${d.getUTCFullYear()}년 ${d.getUTCMonth()+1}월 ${d.getUTCDate()}일"><span>${d.getUTCDate()}</span></button>`;
+  }
+  return `<div class="cal" id="cal"><div class="cal-h"><select id="cal-y" aria-label="년도">${yo}</select><select id="cal-m" aria-label="월">${mo}</select><span class="sp"></span><button type="button" data-act="cal-prev" aria-label="이전 달">▲</button><button type="button" data-act="cal-next" aria-label="다음 달">▼</button></div><div class="cal-g">${cells}</div><p class="cal-n">날짜를 누르면 그 날짜가 속한 수요일~화요일 주차로 설정됩니다.${ws==null?'':`<br>현재 설정: ${wkText(false)}`}</p><div class="cal-f"><button type="button" data-act="cal-today">오늘</button>${ws==null?'':'<button type="button" data-act="cal-clear">표시 해제</button>'}<button type="button" data-act="cal-close">닫기</button></div></div>`;
 }
 function renderAdmin(){
   const w=$('adm-top');
@@ -1902,8 +2005,8 @@ function renderAdmin(){
   h+='<div class="sec"><span class="lbl">투표·메모·편성 초기화 (새 주 시작)</span><div class="row" style="margin:0">';
   if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표, 메모, 포스 편성을 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
   else if(pendReset==='all')h+=`<span style="color:var(--danger);font-weight:600">모든 탭(${tabs.length}개)의 투표, 메모, 포스 편성을 지울까요?</span><button class="emerg" data-act="reset-yes">예, 모두 지우기</button><button data-act="reset-no">취소</button>`;
-  else h+=`<button data-act="reset-tab">현재 탭 전체 초기화 (${esc(t.title)})</button><button class="emerg" data-act="reset-all">⚠ 전체 탭 초기화</button><span class="lbl">탭, 캐릭터, 편성 규칙은 그대로 남습니다</span>`;
-  h+='</div></div>';
+  else h+=`<button data-act="reset-tab">현재 탭 전체 초기화 (${esc(t.title)})</button><button class="emerg" data-act="reset-all">⚠ 전체 탭 초기화</button><button class="calbtn${calOpen?' on':''}" data-act="wk-toggle" aria-expanded="${calOpen}">주차 선택${WK?` (${wkText(true)})`:''}</button><span class="lbl">탭, 캐릭터, 편성 규칙은 그대로 남습니다</span>`;
+  h+='</div>'+(calOpen?calHTML():'')+'</div>';
   h+='<p class="err" id="aerr" style="margin:6px 0 0"></p><p class="ok" id="aok">'+esc(status)+'</p>';
   w.innerHTML=h;
 }
@@ -1913,6 +2016,11 @@ $('admbtn').addEventListener('click',()=>{
 });
 $('adm').addEventListener('input',e=>{if(e.target.id==='tn')tnVal=e.target.value});
 $('adm').addEventListener('change',e=>{
+  if(admin&&(e.target.id==='cal-y'||e.target.id==='cal-m')){
+    const y=+$('cal-y').value,m=+$('cal-m').value;
+    if(y>=CALY0&&y<=CALY1&&m>=0&&m<=11){calY=y;calM=m;renderAdmin()}
+    return;
+  }
   if(e.target.id!=='vf'||!admin)return;
   const v=+e.target.value;
   if(!(v>=18&&v<=36))return;
@@ -1954,6 +2062,21 @@ $('adm').addEventListener('click',async e=>{
       pendTabDel=false;clearDirtyFor(id);planSaving=null;clearTimeout(planTimer);
       await ad.deleteTab(id);
       done(`"${title}" 탭을 삭제했습니다.`);return;
+    }
+    if(act==='wk-toggle'){calOpen=!calOpen;if(calOpen){const n=new Date();calY=n.getFullYear();calM=n.getMonth()}status='';renderAdmin();return}
+    if(act==='cal-prev'||act==='cal-next'){
+      let y=calY,m=calM+(act==='cal-next'?1:-1);
+      if(m<0){m=11;y--}else if(m>11){m=0;y++}
+      if(y<CALY0||y>CALY1)return;
+      calY=y;calM=m;renderAdmin();return;
+    }
+    if(act==='cal-today'){const n=new Date();calY=n.getFullYear();calM=n.getMonth();renderAdmin();return}
+    if(act==='cal-close'){calOpen=false;renderAdmin();return}
+    if(act==='cal-clear'){WK=null;calOpen=false;bump();buildGrid();saveRulesSoon();done('주차 표시를 해제했습니다.');return}
+    if(act==='cal-pick'){
+      const ms=+b.dataset.ms;if(!Number.isFinite(ms))return;
+      WK=ymdOf(wedStart(ms));calOpen=false;bump();buildGrid();saveRulesSoon();
+      done(`${wkText(false)} 주차로 설정했습니다.`);return;
     }
     if(act==='reset-tab'){pendReset='tab';status='';renderAdmin();return}
     if(act==='reset-all'){pendReset='all';status='';renderAdmin();return}
@@ -2187,7 +2310,7 @@ addEventListener('offline',()=>setConn('err','오프라인'));
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 })();
-if(DEMO)window.__regi={layoutForce,planText,get ents(){return ents},anyVis,get profiles(){return profiles},get VIS0(){return VIS0},compose,composeBest,computeRec,evalRes,peopleFor,JOBS,GROUPS,D,idxOf,N,toBits,toStr,get plan(){return plan},get rules(){return rules},get ad(){return ad}};
+if(DEMO)window.__regi={layoutForce,layoutCells,planText,get ents(){return ents},anyVis,get profiles(){return profiles},get VIS0(){return VIS0},compose,composeBest,computeRec,evalRes,peopleFor,JOBS,GROUPS,D,idxOf,N,toBits,toStr,get plan(){return plan},get rules(){return rules},get ad(){return ad}};
 </script>
 </body>
 </html>
