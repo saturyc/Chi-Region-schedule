@@ -803,13 +803,13 @@ function demoAdapter(){
   ['민수1','지연1'].forEach(nm=>{const b=new Uint8Array(N);[0,2].forEach(d=>{for(let i=38;i<46;i++)b[d*48+i]=1});ent.t1.set(nm,toStr(b))});
   const memo={t1:new Map([['민수',{text:'수요일 저녁 9시 이후가 좋아요',t:Date.now()-3600e3}],['도현',{text:'금요일은 늦게 끝나요',t:Date.now()-7200e3}]]),t2:new Map(),t3:new Map()};
   const plans={t1:null,t2:null,t3:null};
-  const mains={};
+  const mains={},offs={};
   const members={t1:new Set([...pool.slice(0,24),'민수1','지연1','푸른','달빛']),t2:new Set([...pool.slice(0,14),'푸른']),t3:new Set([...pool.slice(0,9)])};
   prof.set('푸른',{job:'궁성',owner:'o_푸른'});prof.set('달빛',{job:'권성',owner:'o_달빛'});
   let settingsJson=null;
   const tabSubs=new Set(),entSubs=new Map(),memoSubs=new Map(),planSubs=new Map(),profSubs=new Set(),setSubs=new Set(),memSubs=new Map();
   const DKEY='regi_demo_v3';
-  const snap=()=>({prof:[...prof],tabs:tabsData,ent:Object.fromEntries(Object.entries(ent).map(([t,m])=>[t,[...m]])),memo:Object.fromEntries(Object.entries(memo).map(([t,m])=>[t,[...m]])),plans,members:Object.fromEntries(Object.entries(members).map(([t,x])=>[t,[...x]])),mains:Object.fromEntries(Object.entries(mains).map(([t,x])=>[t,[...x]])),settingsJson});
+  const snap=()=>({prof:[...prof],tabs:tabsData,ent:Object.fromEntries(Object.entries(ent).map(([t,m])=>[t,[...m]])),memo:Object.fromEntries(Object.entries(memo).map(([t,m])=>[t,[...m]])),plans,members:Object.fromEntries(Object.entries(members).map(([t,x])=>[t,[...x]])),mains:Object.fromEntries(Object.entries(mains).map(([t,x])=>[t,[...x]])),offs:Object.fromEntries(Object.entries(offs).map(([t,x])=>[t,[...x]])),settingsJson});
   const persist=()=>{try{localStorage.setItem(DKEY,JSON.stringify(snap()))}catch(e){}};
   try{
     const o=JSON.parse(localStorage.getItem(DKEY)||'null');
@@ -821,6 +821,7 @@ function demoAdapter(){
       Object.keys(plans).forEach(k=>delete plans[k]);Object.entries(o.plans).forEach(([k,v])=>plans[k]=v);
       Object.keys(members).forEach(k=>delete members[k]);Object.entries(o.members).forEach(([k,v])=>members[k]=new Set(v));
       Object.keys(mains).forEach(k=>delete mains[k]);Object.entries(o.mains||{}).forEach(([k,v])=>mains[k]=new Set(v));
+      Object.keys(offs).forEach(k=>delete offs[k]);Object.entries(o.offs||{}).forEach(([k,v])=>offs[k]=new Set(v));
       settingsJson=o.settingsJson||null;
     }
   }catch(e){}
@@ -833,7 +834,7 @@ function demoAdapter(){
   const nMemo=t=>{persist();(memoSubs.get(t)||new Set()).forEach(cb=>cb(memoList(t)))};
   const nPlan=t=>{persist();(planSubs.get(t)||new Set()).forEach(cb=>cb(plans[t]))};
   const nProf=()=>{persist();profSubs.forEach(cb=>cb(profList()))};
-  const memList=t=>[...(members[t]||new Set())].map(name=>({name,main:!!(mains[t]&&mains[t].has(name))}));
+  const memList=t=>[...(members[t]||new Set())].map(name=>({name,main:!!(mains[t]&&mains[t].has(name)),off:!!(offs[t]&&offs[t].has(name))}));
   const nMem=t=>{persist();(memSubs.get(t)||new Set()).forEach(cb=>cb(memList(t),{fromCache:false}))};
   const sub=(map,key,cb,init)=>{if(!map.has(key))map.set(key,new Set());map.get(key).add(cb);setTimeout(()=>cb(init()),0);return()=>map.get(key).delete(cb)};
   return {
@@ -843,9 +844,9 @@ function demoAdapter(){
     subscribeMemos:(t,cb)=>sub(memoSubs,t,cb,()=>memoList(t)),
     subscribePlan:(t,cb)=>sub(planSubs,t,cb,()=>plans[t]),
     subscribeMembers(t,cb){if(!memSubs.has(t))memSubs.set(t,new Set());memSubs.get(t).add(cb);setTimeout(()=>cb(memList(t),{fromCache:false}),0);return()=>memSubs.get(t).delete(cb)},
-    async saveMember(t,name,main){(members[t]||(members[t]=new Set())).add(name);if(typeof main==='boolean'){const m=mains[t]||(mains[t]=new Set());if(main)m.add(name);else m.delete(name)}nMem(t)},
-    async deleteMember(t,name){if(members[t])members[t].delete(name);if(mains[t])mains[t].delete(name);nMem(t)},
-    async getMember(t,name){return members[t]&&members[t].has(name)?{main:!!(mains[t]&&mains[t].has(name))}:false},
+    async saveMember(t,name,main,off){(members[t]||(members[t]=new Set())).add(name);if(typeof main==='boolean'){const m=mains[t]||(mains[t]=new Set());if(main)m.add(name);else m.delete(name)}if(typeof off==='boolean'){const o=offs[t]||(offs[t]=new Set());if(off)o.add(name);else o.delete(name)}nMem(t)},
+    async deleteMember(t,name){if(members[t])members[t].delete(name);if(mains[t])mains[t].delete(name);if(offs[t])offs[t].delete(name);nMem(t)},
+    async getMember(t,name){return members[t]&&members[t].has(name)?{main:!!(mains[t]&&mains[t].has(name)),off:!!(offs[t]&&offs[t].has(name))}:false},
     subscribeProfiles(cb){profSubs.add(cb);setTimeout(()=>cb(profList()),0);return()=>profSubs.delete(cb)},
     subscribeSettings(cb){setSubs.add(cb);setTimeout(()=>cb(settingsJson),0);return()=>setSubs.delete(cb)},
     async saveEntry(t,name,slots){ent[t].set(name,slots);nEnt(t)},
@@ -859,10 +860,11 @@ function demoAdapter(){
     async saveSettings(json){settingsJson=json;persist();setSubs.forEach(cb=>cb(settingsJson))},
     async savePlan(t,json){plans[t]=json;nPlan(t)},
     async getPlan(t){return plans[t]||null},
-    async clearTab(t,withMembers){ent[t]=new Map();memo[t]=new Map();plans[t]=null;if(withMembers){members[t]=new Set();mains[t]=new Set()}nEnt(t);nMemo(t);nPlan(t);if(withMembers)nMem(t)},
-    async deleteTab(t){const i=tabsData.findIndex(x=>x.id===t);if(i>=0)tabsData.splice(i,1);delete ent[t];delete memo[t];delete plans[t];delete members[t];delete mains[t];nTabs()},
+    async clearTab(t,withMembers){ent[t]=new Map();memo[t]=new Map();plans[t]=null;if(withMembers){members[t]=new Set();mains[t]=new Set();offs[t]=new Set()}nEnt(t);nMemo(t);nPlan(t);if(withMembers)nMem(t)},
+    async deleteTab(t){const i=tabsData.findIndex(x=>x.id===t);if(i>=0)tabsData.splice(i,1);delete ent[t];delete memo[t];delete plans[t];delete members[t];delete mains[t];delete offs[t];nTabs()},
     async addTab(title,order,hue,kind){const id='t'+Date.now();tabsData.push(kind==='vote'||kind==='hq'?{id,title,order,hue,kind}:{id,title,order,hue});ent[id]=new Map();memo[id]=new Map();plans[id]=null;members[id]=new Set();nTabs();return id},
     async renameTab(id,title){tabsData.find(t=>t.id===id).title=title;nTabs()},
+    async setTabHp(id,hp){tabsData.find(t=>t.id===id).hp=hp;nTabs()},
     async seedTabs(){},
     _snap:snap
   };
@@ -895,11 +897,11 @@ async function firebaseAdapter(onErr){
       return F.onSnapshot(planDoc(t),s=>cb(s.exists()?s.data().json:null),onErr);
     },
     subscribeMembers(t,cb){
-      return F.onSnapshot(F.collection(db,'tabs',t,'members'),snap=>cb(snap.docs.map(d=>({name:d.data().name,main:d.data().main===true})),{fromCache:snap.metadata.fromCache}),onErr);
+      return F.onSnapshot(F.collection(db,'tabs',t,'members'),snap=>cb(snap.docs.map(d=>({name:d.data().name,main:d.data().main===true,off:d.data().off===true})),{fromCache:snap.metadata.fromCache}),onErr);
     },
-    saveMember:(t,name,main)=>F.setDoc(F.doc(db,'tabs',t,'members',id(name)),typeof main==='boolean'?{name,main,updatedAt:F.serverTimestamp()}:{name,updatedAt:F.serverTimestamp()}),
+    saveMember:(t,name,main,off)=>F.setDoc(F.doc(db,'tabs',t,'members',id(name)),Object.assign({name,updatedAt:F.serverTimestamp()},typeof main==='boolean'?{main}:{},off===true?{off:true}:{})),
     deleteMember:(t,name)=>F.deleteDoc(F.doc(db,'tabs',t,'members',id(name))),
-    async getMember(t,name){const s=await F.getDoc(F.doc(db,'tabs',t,'members',id(name)));return s.exists()?{main:s.data().main===true}:false},
+    async getMember(t,name){const s=await F.getDoc(F.doc(db,'tabs',t,'members',id(name)));return s.exists()?{main:s.data().main===true,off:s.data().off===true}:false},
     subscribeProfiles(cb){
       return F.onSnapshot(F.collection(db,'profiles'),snap=>cb(snap.docs.map(d=>({name:d.data().name,job:d.data().job,owner:d.data().owner}))),onErr);
     },
@@ -930,6 +932,7 @@ async function firebaseAdapter(onErr){
     async deleteTab(t){await this.clearTab(t,true);await F.deleteDoc(F.doc(db,'tabs',t))},
     async addTab(title,order,hue,kind){const tid='t'+Date.now();await F.setDoc(F.doc(db,'tabs',tid),kind==='vote'||kind==='hq'?{title,order,hue,kind}:{title,order,hue});return tid},
     renameTab:(tid,title)=>F.updateDoc(F.doc(db,'tabs',tid),{title}),
+    setTabHp:(tid,hp)=>F.updateDoc(F.doc(db,'tabs',tid),{hp}),
     async seedTabs(){
       const base=[['t1','성역1',1,0],['t2','본부',2,1],['t3','본캐팟',3,2]];
       for(const [tid,title,order,hue] of base)await F.setDoc(F.doc(db,'tabs',tid),{title,order,hue});
@@ -991,9 +994,13 @@ const bump=()=>{dataVer++;recCache=null};
 const jobOf=n=>{const p=profiles.get(n);return p?p.job:null};
 const dn=n=>{const j=jobOf(n);return j?`${n}(${jshort(j)})`:n};
 /* ---------- 본부 투표: 사람(같은 기기의 캐릭터 묶음)과 본캐 ---------- */
-const HQ_MAXC=3;
-let mainSet=new Set(),peopleCache=null;
-const maxChars=()=>isHq()?HQ_MAXC:MAXC;
+const hqNPOf=t=>t&&t.kind==='hq'&&t.hp===4?4:3;
+const hqNP=()=>hqNPOf(curTab());
+let mainSet=new Set(),offSet=new Set(),peopleCache=null;
+/* 본부 투표: 한 사람이 등록할 수 있는 캐릭터는 4개, 활성화(편성에 쓰는) 캐릭터는 모드별 3개(본1·부2) 또는 4개(본1·부3) */
+const HQ_REG=4;
+const hqModeName=np=>np===4?'본1·부3':'본1·부2';
+const maxChars=()=>isHq()?HQ_REG:MAXC;
 function people(){
   if(peopleCache&&peopleCache.ver===dataVer)return peopleCache.list;
   const byKey=new Map();
@@ -1002,32 +1009,90 @@ function people(){
     if(!byKey.has(key))byKey.set(key,[]);
     byKey.get(key).push(n);
   });
+  const cap=hqNP();
   const list=[];
   byKey.forEach((names,key)=>{
-    const m=names.find(n=>mainSet.has(n))||names[0];
-    const rest=names.filter(n=>n!==m);
-    const ch=[m].concat(rest.slice(0,HQ_MAXC-1));
+    /* 본캐: 표시된 캐릭터 전부(여러 개 가능). 표시가 하나도 없으면 이름순 첫 캐릭터 */
+    let mainsAll=names.filter(n=>mainSet.has(n));
+    const explicit=mainsAll.length>0;
+    if(!explicit)mainsAll=[names[0]];
+    const isM=n=>mainsAll.includes(n);
+    /* 활성 캐릭터: off 표시가 없는 캐릭터. 활성 본캐가 하나도 없으면 첫 본캐를 켠 것으로 본다 */
+    const on=names.filter(n=>!offSet.has(n));
+    if(!on.some(isM))on.push(mainsAll[0]);
+    /* 모드 한도(3 또는 4)를 넘으면 첫 본캐 → 부캐(이름순) → 나머지 본캐 순으로 남긴다 */
+    const m1=on.find(isM);
+    const prio=[m1].concat(on.filter(n=>!isM(n))).concat(on.filter(n=>isM(n)&&n!==m1));
+    const keep=new Set(prio.slice(0,cap));
+    const ch=names.filter(n=>keep.has(n)&&isM(n)).concat(names.filter(n=>keep.has(n)&&!isM(n)));
+    const mains=ch.filter(isM);
     const b=new Uint8Array(N);
     ch.forEach(n=>{const e=ents.get(n);if(e)for(let i=0;i<N;i++)if(e[i])b[i]=1});
-    list.push({key,main:m,chars:ch,extra:rest.slice(HQ_MAXC-1),b});
+    list.push({key,main:mains[0],mains,mainsAll,explicit,chars:ch,extra:names.filter(n=>!keep.has(n)),all:names,b});
   });
   list.sort((x,y)=>x.main.localeCompare(y.main,'ko'));
   peopleCache={ver:dataVer,list};
   return list;
 }
 const personOf=n=>people().find(p=>p.chars.includes(n)||p.extra.includes(n))||null;
-const isMainChar=n=>{const p=personOf(n);return !!p&&p.main===n};
+const isMainChar=n=>{const p=personOf(n);return !!p&&p.mainsAll.includes(n)};
 const isMine=n=>chars.includes(n)||(isHq()&&people().some(p=>p.main===n&&p.chars.some(c=>chars.includes(c))));
-async function setMainChar(tid,name){
+/* 본캐 표시를 켜거나 끈다(본캐는 여러 개 가능). 끌 때는 다른 본캐가 있어야 하고, 활성 본캐도 1개 이상 남아야 한다. 안 되면 이유(문구)를 돌려준다 */
+async function setMainFlag(tid,name,want){
   await adReady;
   const p=personOf(name);
-  const grp=new Set([name].concat(p?p.chars.concat(p.extra):[],(tabChars[tid]||[])));
-  for(const c of grp){
-    if(!members.has(c))continue;
-    const want=c===name;
-    if(want!==mainSet.has(c)||(want&&!isMainChar(c))){await ad.saveMember(tid,c,want);if(want)mainSet.add(c);else mainSet.delete(c)}
+  if(!want){
+    if(!p)return '';
+    if(!p.mainsAll.filter(x=>x!==name).length)return '본캐는 최소 1개 이상 있어야 합니다. 먼저 다른 캐릭터를 본캐로 지정하세요.';
+    if(p.chars.includes(name)&&!p.chars.some(c=>c!==name&&p.mainsAll.includes(c)))return '활성화된 본캐가 최소 1개 있어야 합니다. 다른 본캐를 먼저 활성화하세요.';
+  }else if(p&&!p.explicit){
+    /* 본캐 표시가 없던 사람은 이름순 첫 캐릭터가 본캐로 취급되고 있었으므로, 그 표시를 먼저 남긴다 */
+    const c0=p.mainsAll[0];
+    if(c0!==name&&members.has(c0)){await ad.saveMember(tid,c0,true,offSet.has(c0));mainSet.add(c0)}
   }
+  await ad.saveMember(tid,name,want,offSet.has(name));
+  if(want)mainSet.add(name);else mainSet.delete(name);
   bump();
+  return '';
+}
+/* 본부 투표: 이 기기 로그인 캐릭터의 '활성' 상태는 서버(members.off)에 있다. 한도·본캐 규칙을 적용한 결과를 act 에 맞춘다 */
+function hqSyncAct(){
+  if(!isHq()||!membersLoaded)return false;
+  const eff=new Set();
+  people().forEach(p=>{if(p.all.some(n=>chars.includes(n)))p.chars.forEach(n=>eff.add(n))});
+  const next=new Set(chars.filter(n=>eff.has(n)||(!members.has(n)&&act.has(n))));
+  if(!next.size&&chars.length)next.add(chars[Math.min(ci,chars.length-1)]);
+  const same=next.size===act.size&&[...next].every(n=>act.has(n));
+  act=next;
+  if(act.size&&!act.has(chars[ci])){const a=actives();ci=chars.indexOf(a[a.length-1])}
+  return !same;
+}
+/* 활성화 토글: 모드 한도까지만 켤 수 있고, 활성 캐릭터 중 본캐는 최소 1개 */
+async function hqToggle(i){
+  const n=chars[i],er=$('cerr'),cap=hqNP();
+  if(!n||!members.has(n))return;
+  pendMy=false;pendCharDel=false;jobEdit=false;
+  const on=act.has(n);
+  let next;
+  if(on){
+    next=[...act].filter(x=>x!==n);
+    if(!next.length){er.textContent='활성 캐릭터는 최소 1개 있어야 합니다.';return}
+    if(!next.some(isMainChar)){er.textContent='활성 캐릭터 중 본캐가 최소 1개 있어야 합니다. 다른 본캐를 먼저 활성화하세요.';return}
+  }else{
+    if(act.size>=cap){er.textContent=hqModeName(cap)+' 모드에서는 캐릭터를 최대 '+cap+'개까지 활성화할 수 있습니다. 활성화된 캐릭터 하나를 먼저 해제한 뒤 눌러 주세요.';return}
+    next=[...act,n];
+  }
+  er.textContent='';
+  const prev=chars[ci],prevOff=new Set(offSet),want=new Set(next);
+  /* 끄는 것부터 저장해 중간 상태가 한도를 넘지 않게 한다 */
+  const changes=chars.filter(c=>members.has(c)&&offSet.has(c)===want.has(c)).sort((a,b)=>want.has(a)-want.has(b));
+  changes.forEach(c=>{if(want.has(c))offSet.delete(c);else offSet.add(c)});
+  bump();
+  if(on){if(!want.has(chars[ci])){const a=chars.filter(c=>want.has(c));ci=chars.indexOf(a[a.length-1])}}else ci=i;
+  saveChars();renderChars();renderMyReset();rerender();
+  if(chars[ci]!==prev)syncMemoUI();
+  try{await Promise.all(changes.map(c=>ad.saveMember(tabId,c,mainSet.has(c),offSet.has(c))))}
+  catch(err){offSet=prevOff;bump();renderChars();rerender();er.textContent='활성 상태를 저장하지 못했습니다. 연결과 firestore.rules 게시 여부를 확인하세요.'}
 }
 function setConn(kind,text){const c=$('conn');c.className='conn '+(kind||'');$('connt').textContent=text}
 function setSave(t){$('savebar').textContent=t}
@@ -1071,6 +1136,7 @@ function renderTabs(){
 }
 function renderChars(){
   const t=curTab();
+  if(isHq())hqSyncAct();
   const multi=act.size>1;
   let h=`<span class="lbl">참여 캐릭터${t?' · '+esc(t.title):''}</span>`;
   const hqm=isHq();
@@ -1088,12 +1154,15 @@ function renderChars(){
     if(chars.length){
       r+='<button data-act="cdel" class="danger">캐릭터 삭제</button>';
       r+='<button data-act="jedit">직업 변경</button>';
-      if(hqm&&chars.length>1&&!isMainChar(chars[ci]))r+='<button data-act="setmain" title="선택한 캐릭터를 이 탭의 본캐로 지정합니다">본캐로 지정</button>';
+      if(hqm&&chars.length>1){
+        if(!isMainChar(chars[ci]))r+='<button data-act="setmain" title="선택한 캐릭터를 본캐로 지정합니다(본캐는 여러 개 가능)">본캐로 지정 · '+esc(chars[ci])+'</button>';
+        else if(chars.filter(isMainChar).length>1)r+='<button data-act="setsub" title="선택한 캐릭터를 부캐로 바꿉니다">부캐로 지정 · '+esc(chars[ci])+'</button>';
+      }
     }
   }
   h+=`<span class="cact${wide?' wide':''}">${r}</span>`;
   if(chars.length){
-    h+='<span class="chint">'+(hqm?'본부 투표는 한 사람이 본캐 1개와 부캐를 합쳐 최대 '+HQ_MAXC+'개까지 등록합니다. 활성화한 캐릭터 모두에 같은 체크가 들어가고, 전체 현황에서는 한 사람으로 집계됩니다. ':'')+'투표할 캐릭터를 클릭하면 활성화됩니다.'+(multi?' 지금 '+act.size+'개 캐릭터로 동시에 투표되고, 반쪽 색 칸은 일부 캐릭터만 체크된 칸입니다(누르면 모두 체크).':'')+'</span>';
+    h+='<span class="chint">'+(hqm?'본부 투표는 한 사람이 캐릭터를 최대 '+HQ_REG+'개까지 등록하고, '+hqModeName(hqNP())+' 모드에서는 '+hqNP()+'개까지 활성화할 수 있습니다(지금 활성 '+act.size+'/'+hqNP()+'). 본캐는 여러 개 지정할 수 있고 활성 캐릭터 중 본캐가 최소 1개 있어야 합니다. 활성화한 캐릭터 모두에 같은 체크가 들어가고 편성에도 활성 캐릭터만 들어갑니다. ':'')+'투표할 캐릭터를 클릭하면 활성화됩니다.'+(multi?' 지금 '+act.size+'개 캐릭터로 동시에 투표되고, 반쪽 색 칸은 일부 캐릭터만 체크된 칸입니다(누르면 모두 체크).':'')+'</span>';
   }
   $('crow').innerHTML=h;
   const cm=$('cm');cm.hidden=!hqm;
@@ -1280,7 +1349,7 @@ function onEntries(list){
 }
 function onMembers(list,meta){
   members=new Set(list.map(x=>x.name));membersLoaded=true;
-  mainSet=new Set(list.filter(x=>x.main).map(x=>x.name));bump();
+  mainSet=new Set(list.filter(x=>x.main).map(x=>x.name));offSet=new Set(list.filter(x=>x.off).map(x=>x.name));bump();
   if(meta&&!meta.fromCache){
     const keep=chars.filter(n=>members.has(n)||Date.now()-(addedAt.get(tabId+'\u0000'+n)||0)<8000);
     if(keep.length!==chars.length){
@@ -1324,7 +1393,7 @@ function syncSiblings(){
   if(chars.length>=cap)return false;
   const add=[...members].filter(n=>!chars.includes(n)&&!pendingReg.has(tabId+'\u0000'+n)&&mo.has((profiles.get(n)||{}).owner)).sort((x,y)=>(mainSet.has(y)-mainSet.has(x))||x.localeCompare(y,'ko'));
   if(!add.length)return false;
-  add.slice(0,cap-chars.length).forEach(n=>{chars.push(n);known.add(n);if(isHq())act.add(n)});
+  add.slice(0,cap-chars.length).forEach(n=>{chars.push(n);known.add(n)});
   ls.set('regi_known',JSON.stringify([...known]));
   normAct();saveChars();
   return true;
@@ -1381,7 +1450,7 @@ function parsePlan(json){
     }
     if(Array.isArray(o.lay)&&o.lay.length===2&&o.lay.every(a=>Array.isArray(a)&&a.length===10&&a.every(x=>typeof x==='string')))p.lay=o.lay.map(a=>a.slice());
     if(Array.isArray(o.hqo))p.hqo=[Number.isInteger(o.hqo[0])&&o.hqo[0]>=0&&o.hqo[0]<7?o.hqo[0]:null,Number.isInteger(o.hqo[1])&&o.hqo[1]>=0&&o.hqo[1]<=48?o.hqo[1]:null];
-    const g10=g=>Array.isArray(g)&&g.length===3&&g.every(a=>Array.isArray(a)&&a.length===10&&a.every(x=>typeof x==='string'));
+    const g10=g=>Array.isArray(g)&&(g.length===3||g.length===4)&&g.every(a=>Array.isArray(a)&&a.length===10&&a.every(x=>typeof x==='string'));
     const hh=o.hq;
     if(hh&&g10(hh.g)&&Number.isInteger(hh.d)&&Number.isInteger(hh.s))p.hq={d:hh.d,s:hh.s,seed:Number.isInteger(hh.seed)?hh.seed:0,g:hh.g.map(a=>a.slice()),b:Array.isArray(hh.b)?hh.b.filter(x=>typeof x==='string'):[]};
     const hm=o.hqm;
@@ -1416,7 +1485,7 @@ function selectTab(id){
   if(unsubP){unsubP();unsubP=null}
   if(unsubMb){unsubMb();unsubMb=null}
   ents=new Map();plan=null;bump();selMove=null;pendClearPlan=false;
-  members=new Set();membersLoaded=false;mainSet=new Set();
+  members=new Set();membersLoaded=false;mainSet=new Set();offSet=new Set();
   chars=tabChars[id]||(tabChars[id]=[]);ci=Math.min(tabCi[id]||0,Math.max(chars.length-1,0));
   act=new Set(tabAct[id]||[]);
   if(kindOf(tabs.find(t=>t.id===id))==='hq'&&!(tabAct[id]&&tabAct[id].length))act=new Set(chars);
@@ -1452,7 +1521,7 @@ function onTabs(list,meta){
     }
     selectTab(sel);
   }else{
-    renderTabs();syncKind();rerender();
+    bump();renderTabs();syncKind();renderChars();rerender();
     if(admin&&!$('adm').hidden)renderAdmin();
   }
 }
@@ -1567,14 +1636,17 @@ $('crow').addEventListener('click',async e=>{
   if(b){
     if(b.id==='plus'){$('addrow').hidden=false;if(isHq())$('cm').value=chars.some(isMainChar)?'sub':'main';renderQuick();$('cn').focus();return}
     const act=b.dataset.act;
-    if(act==='cdel'){pendCharDel=true;jobEdit=false;$('addrow').hidden=true;$('cerr').textContent='';renderChars();return}
+    if(act==='cdel'){
+      if(isHq()){const p=personOf(chars[ci]);if(p&&p.all.length>1&&p.mainsAll.length<2&&p.mainsAll[0]===chars[ci]){$('cerr').textContent='본캐는 최소 1개 이상 있어야 합니다. 삭제하려면 먼저 다른 캐릭터를 본캐로 지정하세요.';return}}
+      pendCharDel=true;jobEdit=false;$('addrow').hidden=true;$('cerr').textContent='';renderChars();return}
     if(act==='cdel-no'){pendCharDel=false;renderChars();return}
     if(act==='cdel-yes'){deleteChar();return}
     if(act==='jedit'){jobEdit=true;pendCharDel=false;renderChars();return}
     if(act==='jcancel'){jobEdit=false;renderChars();return}
-    if(act==='setmain'){
-      try{await setMainChar(tabId,chars[ci])}catch(err){$('cerr').textContent='본캐를 지정하지 못했습니다. 연결을 확인하고 다시 시도하세요.';return}
-      $('cerr').textContent='';renderChars();rerender();return;
+    if(act==='setmain'||act==='setsub'){
+      let msg='';
+      try{msg=await setMainFlag(tabId,chars[ci],act==='setmain')}catch(err){msg='본캐를 지정하지 못했습니다. 연결을 확인하고 다시 시도하세요.'}
+      $('cerr').textContent=msg;renderChars();rerender();return;
     }
     if(act==='jsave'){
       const j=$('jsel').value;
@@ -1585,6 +1657,7 @@ $('crow').addEventListener('click',async e=>{
   }
   const c=e.target.closest('.cc');
   if(c){
+    if(isHq()){await hqToggle(+c.dataset.i);return}
     const prev=chars[ci],n=chars[+c.dataset.i];
     if(act.has(n)){if(act.size>1){act.delete(n);normAct()}}
     else{act.add(n);ci=+c.dataset.i}
@@ -1634,7 +1707,8 @@ async function registerCharInner(name,job,tid,asMain){
   const hq=kindOf(tabs.find(t=>t.id===tid))==='hq';
   const list=tabChars[tid]||(tabChars[tid]=[]);
   if(list.includes(name))return '이미 이 탭에 추가한 캐릭터입니다.';
-  if(hq&&list.length>=HQ_MAXC)return '본부 투표에서는 한 사람이 캐릭터를 최대 '+HQ_MAXC+'개(본캐 1 + 부캐 2)까지 추가할 수 있습니다.';
+  const hqn=hqNPOf(tabs.find(t=>t.id===tid));
+  if(hq&&list.length>=HQ_REG)return '본부 투표에서는 한 사람이 캐릭터를 최대 '+HQ_REG+'개까지 추가할 수 있습니다.';
   if(list.length>=MAXC)return '이 탭에는 캐릭터를 최대 '+MAXC+'개까지 추가할 수 있습니다.';
   if(profiles.has(name)&&!profiles.get(name).owner){
     try{await adReady;const pj=profiles.get(name).job;await ad.saveProfile(name,pj,OWNER);profiles.set(name,{job:pj,owner:OWNER});bump()}catch(e){}
@@ -1646,15 +1720,18 @@ async function registerCharInner(name,job,tid,asMain){
     profiles.set(name,{job,owner:OWNER});bump();
   }
   const mf=hq?(asMain===undefined?!(tid===tabId&&list.some(isMainChar)):!!asMain):undefined;
-  try{await adReady;await ad.saveMember(tid,name,mf)}
+  /* 활성 한도(모드별 3·4개)가 이미 찼으면 비활성으로 등록한다 */
+  const off=hq?(tid===tabId?act.size>=hqn:list.length>=hqn):undefined;
+  try{await adReady;await ad.saveMember(tid,name,mf,off)}
   catch(e){return '등록하지 못했습니다. 연결을 확인하고 다시 시도하세요.'}
   if(hq&&tid===tabId){
-    if(mf){for(const c of list){if(mainSet.has(c)){try{await ad.saveMember(tid,c,false)}catch(e){}mainSet.delete(c)}}mainSet.add(name)}
+    if(mf)mainSet.add(name);
+    if(off)offSet.add(name);else offSet.delete(name);
     members.add(name);bump();
   }
   if(!list.includes(name))list.push(name);known.add(name);addedAt.set(tid+'\u0000'+name,Date.now());
   tabCi[tid]=list.length-1;tabAct[tid]=hq?[...list]:[name];
-  if(tid===tabId){chars=list;ci=list.length-1;act=new Set(hq?list:[name])}
+  if(tid===tabId){chars=list;ci=list.length-1;act=hq?new Set([...act].filter(c=>list.includes(c)&&c!==name).concat(off?[]:[name])):new Set([name])}
   ls.set('regi_tact',JSON.stringify(tabAct));
   ls.set('regi_tc',JSON.stringify(tabChars));ls.set('regi_tci',JSON.stringify(tabCi));ls.set('regi_known',JSON.stringify([...known]));
   try{await unifyOwners()}catch(e){}
@@ -1710,6 +1787,8 @@ $('vseg').addEventListener('click',e=>{
    - 한 포스의 본캐는 모두 1파티. 1파티 빈자리는 부캐로 채운다(탱커·서폿 우선). 2파티에는 서폿 1개 이상.
    - 같은 직업 중복은 대체 인원이 있는 한 피한다. 치유는 앞 포스부터 2개씩 채운다. */
 const HQ_PEN={mainOut:30,noSup1:12,noTank1:8,noSup2:10,dupParty:3,supExtra:4,tankExtra:2,dupPosse:1,heal:[0.6,0.4,0.2],balance:6,skip:0.3,size:0.5};
+/* 본1·부3(4포스) 전용 점수: 두 파티 모두 서폿 1개(치유 우선, 차선 호법)가 가장 중요하고, 탱커 조건은 없다 */
+const HQ_PEN4={mainOut:30,noSup:40,hoOnly:2,balance:12};
 const hqRank=j=>TANK_JOBS.includes(j)?0:MELEE_JOBS.includes(j)?1:RANGE_JOBS.includes(j)?2:j==='호법성'?4:j==='치유성'?5:3;
 const hqSup=j=>j==='치유성'||j==='호법성';
 const hqCombos=(n,k)=>{const out=[];const cur=[];(function go(s){if(cur.length===k){out.push(cur.slice());return}for(let i=s;i<n;i++){cur.push(i);go(i+1);cur.pop()}})(0);return out};
@@ -1746,14 +1825,35 @@ function hqSplitRaw(items){
   }
   return best||{pen:0,A:[]};
 }
+function hqSplitRaw4(items){
+  const n=items.length,k=Math.min(5,n);
+  let best=null;
+  const mi=[],si=[];items.forEach((o,i)=>(o.main?mi:si).push(i));
+  const combs=mi.length<=k?hqCombosOf(si.length,k-mi.length).map(c=>mi.concat(c.map(x=>si[x]))):hqCombosOf(n,k);
+  const heal=L=>L.some(o=>o.job==='치유성');
+  for(const comb of combs){
+    const inA=new Array(n).fill(false);comb.forEach(i=>inA[i]=true);
+    const A=[],B=[];items.forEach((o,i)=>(inA[i]?A:B).push(o));
+    let pen=0;
+    B.forEach(o=>{if(o.main)pen+=HQ_PEN4.mainOut});
+    const a=hqPartyPen(A),b=hqPartyPen(B);
+    pen+=a.pen+b.pen;
+    if(!a.sup)pen+=HQ_PEN4.noSup;else if(!heal(A))pen+=HQ_PEN4.hoOnly;
+    if(B.length){if(!b.sup)pen+=HQ_PEN4.noSup;else if(!heal(B))pen+=HQ_PEN4.hoOnly}
+    const cnt={};items.forEach(o=>{cnt[o.job]=(cnt[o.job]||0)+1});
+    Object.keys(cnt).forEach(j=>{if(cnt[j]>2)pen+=HQ_PEN.dupPosse*(cnt[j]-2)});
+    if(!best||pen<best.pen-1e-9)best={pen,A:comb.slice()};
+  }
+  return best||{pen:0,A:[]};
+}
 const hqSplitMemo=new Map();
-function hqSplit(items){
+function hqSplit(items,m4){
   /* 정렬한 순서로 캐시. items 는 {p,c,job,main} */
   const idx=items.map((o,i)=>i).sort((x,y)=>(items[y].main-items[x].main)||(hqRank(items[x].job)-hqRank(items[y].job))||(items[x].job<items[y].job?-1:items[x].job>items[y].job?1:0)||(items[x].p-items[y].p));
   const sorted=idx.map(i=>items[i]);
-  const key=sorted.map(o=>(o.main?'M':'s')+o.job).join(',');
+  const key=(m4?'4|':'')+sorted.map(o=>(o.main?'M':'s')+o.job).join(',');
   let r=hqSplitMemo.get(key);
-  if(!r){r=hqSplitRaw(sorted);if(hqSplitMemo.size>20000)hqSplitMemo.clear();hqSplitMemo.set(key,r)}
+  if(!r){r=m4?hqSplitRaw4(sorted):hqSplitRaw(sorted);if(hqSplitMemo.size>20000)hqSplitMemo.clear();hqSplitMemo.set(key,r)}
   const inA=new Set(r.A);
   const A=[],B=[];sorted.forEach((o,i)=>(inA.has(i)?A:B).push(o));
   return {pen:r.pen,A,B};
@@ -1765,54 +1865,77 @@ function hqOptions(nc){
   else if(nc===1){for(let k=0;k<3;k++){const a=[-1,-1,-1];a[k]=0;out.push(a)}}
   return out;
 }
-function hqEval(P,assign,withParts){
-  const pos=[[],[],[]];
-  P.forEach((pp,p)=>{const a=assign[p];for(let k=0;k<3;k++){const c=a[k];if(c>=0)pos[k].push({p,c,job:pp.chars[c].job,main:c===0?1:0})}});
-  let sc=0;const parts=[],mc=[0,0,0],sz=[0,0,0];
-  for(let k=0;k<3;k++){
-    const r=hqSplit(pos[k]);sc+=r.pen;if(withParts)parts.push(r);
+function hqOptions4(nc){
+  const out=[];
+  if(nc<1)return out;
+  const used=[false,false,false,false],cur=[];
+  (function go(i){
+    if(i===nc){const a=[-1,-1,-1,-1];cur.forEach((k,c)=>a[k]=c);out.push(a);return}
+    for(let k=0;k<4;k++){if(used[k])continue;used[k]=true;cur.push(k);go(i+1);cur.pop();used[k]=false}
+  })(0);
+  return out;
+}
+const hqOpt4Memo=new Map();
+const hqOptions4c=nc=>{let v=hqOpt4Memo.get(nc);if(!v){v=hqOptions4(nc);hqOpt4Memo.set(nc,v)}return v};
+function hqEval(P,assign,withParts,NP){
+  NP=NP===4?4:3;const m4=NP===4;
+  const pos=[];for(let k=0;k<NP;k++)pos.push([]);
+  P.forEach((pp,p)=>{const a=assign[p];for(let k=0;k<NP;k++){const c=a[k];if(c>=0)pos[k].push({p,c,job:pp.chars[c].job,main:(pp.chars[c].main===undefined?c===0:!!pp.chars[c].main)?1:0})}});
+  let sc=0;const parts=[],mc=new Array(NP).fill(0),sz=new Array(NP).fill(0);
+  for(let k=0;k<NP;k++){
+    const r=hqSplit(pos[k],m4);sc+=r.pen;if(withParts)parts.push(r);
     mc[k]=pos[k].reduce((t,o)=>t+o.main,0);sz[k]=pos[k].length;
-    const h=pos[k].filter(o=>o.job==='치유성').length;
-    sc+=HQ_PEN.heal[k]*(2-Math.min(2,h));
+    if(!m4){
+      const h=pos[k].filter(o=>o.job==='치유성').length;
+      sc+=HQ_PEN.heal[k]*(2-Math.min(2,h));
+    }
   }
-  const dm=Math.max(...mc)-Math.min(...mc);if(dm>1)sc+=HQ_PEN.balance*(dm-1);
+  const dm=Math.max(...mc)-Math.min(...mc);if(dm>1)sc+=(m4?HQ_PEN4.balance:HQ_PEN.balance)*(dm-1);
   sc+=HQ_PEN.size*(Math.max(...sz)-Math.min(...sz));
   P.forEach((pp,p)=>{
     const a=assign[p],nc=pp.chars.length;
-    if(nc===2){const s=a.indexOf(-1);sc+=HQ_PEN.skip*(2-s)}
-    else if(nc===1){sc+=0.1*a.indexOf(0)}
+    if(m4){
+      for(let k=0;k<NP;k++)if(a[k]<0)sc+=HQ_PEN.skip*(NP-1-k);
+      if(nc===1)sc+=0.1*a.indexOf(0);
+    }else{
+      if(nc===2){const s=a.indexOf(-1);sc+=HQ_PEN.skip*(2-s)}
+      else if(nc===1){sc+=0.1*a.indexOf(0)}
+    }
   });
   return withParts?{sc,parts,mc,sz}:sc;
 }
-function hqSolve(P,seed){
+function hqSolve(P,seed,NP){
+  NP=NP===4?4:3;
   const rng=mulberry(hashStr('hq|'+(seed||0)));
   const n=P.length;
-  const opts=P.map(pp=>hqOptions(Math.min(3,pp.chars.length)));
+  const opts=P.map(pp=>NP===4?hqOptions4c(Math.min(4,pp.chars.length)):hqOptions(Math.min(3,pp.chars.length)));
   const ok=P.map((_,p)=>opts[p].length>0);
-  const RESTARTS=24;
+  const none=()=>new Array(NP).fill(-1);
+  const RESTARTS=NP===4?HQ_RS4:24;
   let best=null;
   for(let r=0;r<RESTARTS;r++){
-    const as=P.map((_,p)=>ok[p]?opts[p][Math.floor(rng()*opts[p].length)]:[-1,-1,-1]);
-    let cur=hqEval(P,as);
+    const as=P.map((_,p)=>ok[p]?opts[p][Math.floor(rng()*opts[p].length)]:none());
+    let cur=hqEval(P,as,false,NP);
     for(let pass=0;pass<8;pass++){
       let improved=false;
       const order=[...Array(n).keys()].sort(()=>rng()-0.5);
       for(const p of order){
         if(!ok[p])continue;
         let bo=as[p],bs=cur;
-        for(const o of opts[p]){if(o===as[p])continue;const keep=as[p];as[p]=o;const v=hqEval(P,as);as[p]=keep;if(v<bs-1e-9){bs=v;bo=o}}
+        for(const o of opts[p]){if(o===as[p])continue;const keep=as[p];as[p]=o;const v=hqEval(P,as,false,NP);as[p]=keep;if(v<bs-1e-9){bs=v;bo=o}}
         if(bo!==as[p]){as[p]=bo;cur=bs;improved=true}
       }
       if(!improved)break;
     }
     if(!best||cur<best.sc-1e-9)best={sc:cur,as:as.map(a=>a.slice())};
   }
-  const ev=hqEval(P,best.as,true);
+  const ev=hqEval(P,best.as,true,NP);
   const key=o=>[hqRank(o.job),o.main?0:1,o.p];
   const cmp=(x,y)=>{const a=key(x),b=key(y);for(let i=0;i<3;i++)if(a[i]!==b[i])return a[i]-b[i];return 0};
   const posses=ev.parts.map(r=>({p1:r.A.slice().sort(cmp).map(o=>({p:o.p,c:o.c})),p2:r.B.slice().sort(cmp).map(o=>({p:o.p,c:o.c}))}));
   return {posses,score:ev.sc,mc:ev.mc,sz:ev.sz,assign:best.as};
 }
+const HQ_RS4=24;
 
 /* ---------- 본부 투표: 포스편성(본부) / 포스편성(직접구성) ---------- */
 const HQ_P=10;
@@ -1845,16 +1968,17 @@ function hqCompose(){
   const w=hqWhen();
   if(!w||!w.c){hqSay('이 조건에 가능한 사람이 없어 편성할 수 없습니다.','err');return}
   const {chosen}=hqPick(w);
-  const P=chosen.map(p=>({chars:p.chars.map(c=>({job:jobOf(c)||'',name:c}))}));
+  const P=chosen.map(p=>({chars:p.chars.map(c=>({job:jobOf(c)||'',name:c,main:p.mains.includes(c)}))}));
   const pl=ensurePlan();
   const seed=pl.hq?pl.hq.seed+1:1;
-  const res=hqSolve(P,seed);
-  pl.hq={d:w.d,s:w.s,seed,g:res.posses.map(ps=>hqCells(ps,o=>P[o.p].chars[o.c].name)),b:chosen.map(p=>p.main)};
+  const NP=hqNP();
+  const res=hqSolve(P,seed,NP);
+  pl.hq={d:w.d,s:w.s,seed,g:res.posses.map(ps=>hqCells(ps,o=>P[o.p].chars[o.c].name)),b:chosen.flatMap(p=>p.mains)};
   bump();savePlanSoon();pendHqClear=null;selHq=null;
-  hqSay(`${hqWhenText(w)} 기준 ${chosen.length}명으로 3개 포스를 편성했습니다.`,'ok');
+  hqSay(`${hqWhenText(w)} 기준 ${chosen.length}명으로 ${NP}개 포스를 편성했습니다.`,'ok');
 }
-/* 직접구성 입력: 10행 × 3칸(본캐·부캐·부캐). 닉네임(로그인한 캐릭터) 또는 직업(검성/검 등) */
-const normRows=x=>[...Array(10)].map((_,r)=>[0,1,2].map(c=>{const v=x&&x[r]&&typeof x[r][c]==='string'?x[r][c].trim().slice(0,24):'';return v}));
+/* 직접구성 입력: 10행 × 3칸(본캐·부캐·부캐, 본1부3 모드는 4칸). 닉네임(로그인한 캐릭터) 또는 직업(검성/검 등) */
+const normRows=x=>[...Array(10)].map((_,r)=>[0,1,2,3].map(c=>{const v=x&&x[r]&&typeof x[r][c]==='string'?x[r][c].trim().slice(0,24):'';return v}));
 /* 직접구성 한 칸의 값: "닉네임/직업"(직업을 고른 경우) 또는 "닉네임"(예전 입력은 직업 이름 하나만 적은 것도 있음) */
 const HQM_JOBNAME=t=>JOBS.includes(t)?t:JOBS.includes(t+'성')?t+'성':'';
 function hqmSplit(v){
@@ -1873,11 +1997,11 @@ function hqmChar(v,r,c){
   const nick=s.nick||`${r+1}번-캐릭터${c+1}`;
   return {id:r+'.'+c,token:nick,nick,job,auto:!s.nick,unknown,label:job?`${nick}(${jshort(job)})`:nick};
 }
-function hqmPeople(rows){
+function hqmPeople(rows,np){
   const out=[];
   rows.forEach((r,ri)=>{
     const ch=[];
-    r.forEach((t,ci)=>{const o=ch.length<3?hqmChar(t,ri,ci):null;if(o)ch.push(o)});
+    r.forEach((t,ci)=>{const o=ch.length<(np||4)&&ci<(np||4)?hqmChar(t,ri,ci):null;if(o)ch.push(o)});
     if(ch.length)out.push({row:ri,chars:ch});
   });
   return out;
@@ -1885,23 +2009,24 @@ function hqmPeople(rows){
 function hqmCompose(){
   const pl=ensurePlan();
   const rows=normRows(pl.hqm?pl.hqm.in:null);
-  const P=hqmPeople(rows);
+  const NP=hqNP();
+  const P=hqmPeople(rows,NP);
   if(!P.length){hqSay('입력된 캐릭터가 없습니다. 닉네임을 쓰거나 직업을 고르세요.','err');return}
   const seed=pl.hqm&&pl.hqm.res?pl.hqm.res.seed+1:1;
-  const res=hqSolve(P.map(p=>({chars:p.chars.map(c=>({job:c.job}))})),seed);
+  const res=hqSolve(P.map(p=>({chars:p.chars.map((c,i)=>({job:c.job,main:i===0}))})),seed,NP);
   pl.hqm={in:rows,res:{rows:rows.map(r=>r.slice()),seed,g:res.posses.map(ps=>hqCells(ps,o=>P[o.p].chars[o.c].id))}};
   bump();savePlanSoon();pendHqClear=null;selHq=null;
-  hqSay(`${P.length}명으로 3개 포스를 편성했습니다.`,'ok');
+  hqSay(`${P.length}명으로 ${NP}개 포스를 편성했습니다.`,'ok');
 }
 /* 화면용 셀 설명: {id,label,job,main,mine,title,pk,off} */
 function hqDescName(n,h){
   const p=personOf(n);
   const off=!!(h&&p&&!p.b[idxOf(h.d,h.s)]);
-  return {id:n,label:dn(n),job:jobOf(n)||'',main:!!p&&p.main===n,mine:chars.includes(n),title:p?`${dn(p.main)} 님의 캐릭터`:'',pk:p?p.key:n,off};
+  return {id:n,label:dn(n),job:jobOf(n)||'',main:!!p&&p.mainsAll.includes(n),mine:chars.includes(n),title:p?`${dn(p.main)} 님의 캐릭터`:'',pk:p?p.key:n,off};
 }
 function hqDescMap(rows){
   const m=new Map();
-  hqmPeople(rows).forEach(p=>p.chars.forEach((c,i)=>m.set(c.id,{id:c.id,label:c.label,job:c.job,main:i===0,mine:false,unknown:!!c.unknown,title:`${p.row+1}번 사람`,pk:'r'+p.row})));
+  hqmPeople(rows,4).forEach(p=>p.chars.forEach((c,i)=>m.set(c.id,{id:c.id,label:c.label,job:c.job,main:i===0,mine:false,unknown:!!c.unknown,title:`${p.row+1}번 사람`,pk:'r'+p.row})));
   return m;
 }
 const hqDescOf=id=>{if(view==='hqm'){const r=plan&&plan.hqm&&plan.hqm.res;return r?hqDescMap(r.rows).get(id):null}return hqDescName(id,plan&&plan.hq)};
@@ -1912,12 +2037,12 @@ const hqCellHTML=(d,k,c,ed)=>{
   const sel=ed&&selHq&&selHq.name===d.id;
   return `<div class="cell hq${d.mine?' mine':''}${sel?' sel':''}"${dj}${pos}${ed?` data-n="${esc(d.id)}"`:''} title="${esc(d.title||'')}" style="cursor:${ed?'grab':'default'}"><span class="cn">${esc(d.label)}</span><em class="mt${d.main?'':' sub'}">${d.main?'본':'부'}</em>${d.unknown?'<small class="cb">직업 확인</small>':d.off?'<small class="cb">투표 없음</small>':''}</div>`;
 };
-function hqChecks(ds){
+function hqChecks(ds,m4){
   const P1=ds.slice(0,5).filter(Boolean),P2=ds.slice(5,10).filter(Boolean);
   const t=P1.filter(d=>TANK_JOBS.includes(d.job)).length;
   const s1=P1.filter(d=>hqSup(d.job)),s2=P2.filter(d=>hqSup(d.job));
   const out=[];
-  out.push(t?`<div class="chk ok">✓ 1파티 탱커 ${t}명</div>`:'<div class="chk ok">ⓘ 1파티 탱커 없음 (딜러로 구성)</div>');
+  if(!m4)out.push(t?`<div class="chk ok">✓ 1파티 탱커 ${t}명</div>`:'<div class="chk ok">ⓘ 1파티 탱커 없음 (딜러로 구성)</div>');
   out.push(s1.length?`<div class="chk ok">✓ 1파티 서폿 ${s1.map(d=>jshort(d.job)).join('·')}</div>`:'<div class="chk bad">⚠ 1파티 서폿 없음</div>');
   out.push(P2.length?(s2.length?`<div class="chk ok">✓ 2파티 서폿 ${s2.map(d=>jshort(d.job)).join('·')}</div>`:'<div class="chk bad">⚠ 2파티 서폿 없음</div>'):'');
   const dup=[];
@@ -1930,11 +2055,12 @@ function hqChecks(ds){
   return out.join('');
 }
 function hqCardsHTML(g,desc,ed){
+  const m4=g.length===4;
   return '<div class="hqcards">'+g.map((cells,k)=>{
     const ds=cells.map(c=>c?desc(c):null);
     const n=ds.filter(Boolean).length,mn=ds.filter(d=>d&&d.main).length;
     const row=(from,lab)=>`<div class="hqrow"><span class="lbl">${lab}</span><div class="pgrid">${ds.slice(from,from+5).map((d,i)=>hqCellHTML(d,k,from+i,ed)).join('')}</div></div>`;
-    return `<div class="pcard"${ed?` data-hk="${k}"`:''}><div class="ph"><b>${k+1}포스</b><span>본캐 ${mn} · 부캐 ${n-mn}</span><span class="cnt">${n}명</span></div>${hqChecks(ds)}<div class="sep"></div>${row(0,'1파티 · 본캐라인')}${row(5,'2파티')}</div>`;
+    return `<div class="pcard"${ed?` data-hk="${k}"`:''}><div class="ph"><b>${k+1}포스</b><span>본캐 ${mn} · 부캐 ${n-mn}</span><span class="cnt">${n}명</span></div>${hqChecks(ds,m4)}<div class="sep"></div>${row(0,'1파티 · 본캐라인')}${row(5,'2파티')}</div>`;
   }).join('')+'</div>';
 }
 function hqChipHTML(id,d,ed,tag,off){
@@ -1978,7 +2104,8 @@ function hqAdminHTML(){
   }
   const has=!!(plan&&plan.hq);
   const btns='<button id="hq-go" data-hq="go">포스 편성</button>'+(has?(pendHqClear==='hq'?'<span class="askt">편성을 지울까요?</span><button class="danger" data-hq="clear-yes">지우기</button><button data-hq="clear-no">취소</button>':'<button data-hq="clear">편성 지우기</button>'):'');
-  return `<div class="pv-sec"><h3>시간 지정 <span>자동은 가능한 사람이 가장 많은 요일·시간입니다 · 10명이 넘으면 캐릭터가 많은 사람부터 편성하고 나머지는 대기</span></h3><div class="lead"><label>요일<select id="hq-d" aria-label="본부 요일">${dsel}</select></label><label>시간<select id="hq-t" aria-label="본부 시간">${tsel}</select></label></div></div><div class="pbar">${btns}</div>`;
+  const np=hqNP();
+  return `<div class="pv-sec"><h3>시간 지정 <span>${np===4?'본1·부3 모드(4포스) · ':''}자동은 가능한 사람이 가장 많은 요일·시간입니다 · 10명이 넘으면 캐릭터가 많은 사람부터 편성하고 나머지는 대기</span></h3><div class="lead"><label>요일<select id="hq-d" aria-label="본부 요일">${dsel}</select></label><label>시간<select id="hq-t" aria-label="본부 시간">${tsel}</select></label></div></div><div class="pbar">${btns}</div>`;
 }
 function hqOutHTML(){
   const h=plan&&plan.hq,ed=hqCanEdit()&&view==='hq';
@@ -1989,9 +2116,10 @@ function hqOutHTML(){
   if(h){
     const {chosen,wait}=hqPick(h);
     const inG0=new Set(h.g.flat().filter(Boolean));
-    const fresh=new Set(chosen.map(p=>p.main));
+    const fresh=new Set(chosen.flatMap(p=>p.mains));
     const stale=!!(h.b&&h.b.length)&&(fresh.size!==h.b.length||h.b.some(n=>!fresh.has(n)));
     top+=`<p class="plan" style="margin:0 0 8px">${hqWhenText(h)} · 가능 ${chosen.length+wait.length}명 중 ${ppl0.filter(p=>p.chars.concat(p.extra).some(n=>inG0.has(n))).length}명 편성${wait.length?` · 대기 ${wait.length}명`:''}</p>`;
+    if(admin&&h.g.length!==hqNP())top+='<div class="warnline">본부 모드가 바뀌었습니다. "포스 편성"을 다시 누르면 '+hqNP()+'개 포스로 편성됩니다.</div>';
     if(admin&&stale)top+='<div class="warnline">투표가 바뀌어 현재 가능한 인원이 편성과 다릅니다. "포스 편성"을 다시 누르면 반영됩니다.</div>';
   }else if(w&&w.c){
     top+=`<p class="plan" style="margin:0 0 8px">${admin?'편성 전입니다. ':'아직 편성되지 않았습니다. '}${hqWhenText(w)}에 ${w.c}명이 가능합니다${w.c<HQ_P?` (${HQ_P}명 미만)`:''}.</p>`;
@@ -2002,8 +2130,8 @@ function hqOutHTML(){
     const inG=new Set(h.g.flat().filter(Boolean));
     const ppl=ppl0.filter(p=>p.chars.concat(p.extra).some(n=>inG.has(n)));
     const at=(p,k)=>{const n=p.chars.concat(p.extra).find(x=>h.g[k].includes(x));return n?hqDescName(n,h):null};
-    body+='<div class="pv-sec"><h3>사람별 배정 <span>본캐는 한 포스에만 들어갑니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>사람(본캐)</th><th>1포스</th><th>2포스</th><th>3포스</th></tr></thead><tbody>'+
-      ppl.map(p=>`<tr><td>${esc(dn(p.main))}</td>${[0,1,2].map(k=>`<td>${jpHTML(at(p,k))}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
+    body+='<div class="pv-sec"><h3>사람별 배정 <span>한 사람의 캐릭터는 포스마다 1개씩 들어갑니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>사람(본캐)</th>'+h.g.map((_,k)=>`<th>${k+1}포스</th>`).join('')+'</tr></thead><tbody>'+
+      ppl.map(p=>`<tr><td>${esc(dn(p.main))}</td>${h.g.map((_,k)=>`<td>${jpHTML(at(p,k))}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
     const i=idxOf(h.d,h.s);
     const waitAll=ppl0.filter(p=>anyVis(p.b)&&!p.chars.concat(p.extra).some(n=>inG.has(n)));
     const days=p=>D.filter((_,d)=>hasDay(p.b,d)).join('·');
@@ -2025,16 +2153,17 @@ function hqmInputHTML(){
   const rows=normRows(plan&&plan.hqm?plan.hqm.in:null);
   const names=[...members].sort((x,y)=>x.localeCompare(y,'ko'));
   const dl='<datalist id="hq-dl">'+names.map(n=>`<option value="${esc(n)}">`).join('')+'</datalist>';
-  const nm=['본캐','부캐1','부캐2'];
+  const NC=hqNP();
+  const nm=['본캐','부캐1','부캐2','부캐3'];
   const cellH=(v,ri,ci)=>{
     const s=hqmSplit(v),pr=s.nick?profiles.get(s.nick):null;
     const opts=`<option value="">${pr?esc(pr.job)+'(등록)':'직업'}</option>`+JOBS.map(j=>`<option value="${j}"${s.job===j?' selected':''}>${j}</option>`).join('');
     return `<td><div class="hqc"><input class="hqin" data-r="${ri}" data-c="${ci}" list="hq-dl" maxlength="20" autocomplete="off" placeholder="${ri+1}번-캐릭터${ci+1}" aria-label="${ri+1}번 ${nm[ci]} 닉네임" value="${esc(s.nick)}"><select class="hqjob" data-r="${ri}" data-c="${ci}" aria-label="${ri+1}번 ${nm[ci]} 직업">${opts}</select></div></td>`;
   };
-  const body=rows.map((r,ri)=>`<tr><td>${ri+1}</td>${r.map((v,ci)=>cellH(v,ri,ci)).join('')}</tr>`).join('');
+  const body=rows.map((r,ri)=>`<tr><td>${ri+1}</td>${r.slice(0,NC).map((v,ci)=>cellH(v,ri,ci)).join('')}</tr>`).join('');
   const has=!!(plan&&plan.hqm&&plan.hqm.res);
   const btns='<button id="hq-go" data-hq="mgo">포스 편성</button>'+(has?(pendHqClear==='hqm'?'<span class="askt">편성 결과를 지울까요?</span><button class="danger" data-hq="mclear-yes">지우기</button><button data-hq="clear-no">취소</button>':'<button data-hq="mclear">결과 지우기</button>'):'')+(pendHqClear==='rows'?'<span class="askt">입력한 내용을 모두 지울까요?</span><button class="danger" data-hq="mrows-yes">지우기</button><button data-hq="clear-no">취소</button>':'<button data-hq="mrows">입력 지우기</button>');
-  return `<div class="pv-sec"><h3>직접 구성 <span>사람마다 캐릭터 최대 3개 · 닉네임 칸에 닉네임을 쓰고 옆 칸에서 직업을 고르세요 · 첫 칸이 본캐 · 닉네임을 비우고 직업만 고르면 '1번-캐릭터1'처럼 이름이 자동으로 붙습니다 · 둘 다 비우면 캐릭터가 없는 것으로 봅니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>#</th><th>본캐</th><th>부캐</th><th>부캐</th></tr></thead><tbody>${body}</tbody></table></div>${dl}<p class="hintline" style="margin:8px 0 0">입력은 자동 저장되고 모든 기기에서 같이 보입니다. 캐릭터가 2개인 사람은 한 포스를 쉬고 최대한 채웁니다.</p></div><div class="pbar">${btns}</div>`;
+  return `<div class="pv-sec"><h3>직접 구성 <span>사람마다 캐릭터 최대 ${NC}개 · 닉네임 칸에 닉네임을 쓰고 옆 칸에서 직업을 고르세요 · 첫 칸이 본캐 · 닉네임을 비우고 직업만 고르면 '1번-캐릭터1'처럼 이름이 자동으로 붙습니다 · 둘 다 비우면 캐릭터가 없는 것으로 봅니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>#</th><th>본캐</th>${'<th>부캐</th>'.repeat(NC-1)}</tr></thead><tbody>${body}</tbody></table></div>${dl}<p class="hintline" style="margin:8px 0 0">입력은 자동 저장되고 모든 기기에서 같이 보입니다. 캐릭터가 ${NC}개보다 적은 사람은 그만큼 포스를 쉬고 최대한 채웁니다.</p></div><div class="pbar">${btns}</div>`;
 }
 function hqmOutHTML(){
   const m=plan&&plan.hqm,r=m&&m.res;
@@ -2044,13 +2173,14 @@ function hqmOutHTML(){
   }
   const ed=hqCanEdit()&&view==='hqm';
   const P=hqmPeople(r.rows);
+  if(admin&&r.g.length!==hqNP())top+='<div class="warnline">본부 모드가 바뀌었습니다. "포스 편성"을 다시 누르면 '+hqNP()+'개 포스로 편성됩니다.</div>';
   if(admin&&JSON.stringify(normRows(m.in))!==JSON.stringify(r.rows))top+='<div class="warnline">입력이 편성한 뒤에 바뀌었습니다. "포스 편성"을 다시 누르면 반영됩니다. (직접 옮긴 배치는 다시 편성하면 새로 계산됩니다)</div>';
   const map=hqDescMap(r.rows);
   const desc=id=>map.get(id)||{id,label:id,job:'',main:false,pk:id};
   let body=hqCardsHTML(r.g,desc,ed);
   const at=(p,k)=>{const c=p.chars.find(c=>r.g[k].includes(c.id));return c?map.get(c.id):null};
-  body+='<div class="pv-sec"><h3>사람별 배정 <span>본캐는 한 포스에만 들어갑니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>사람</th><th>1포스</th><th>2포스</th><th>3포스</th></tr></thead><tbody>'+
-    P.map(p=>`<tr><td>${p.row+1}번</td>${[0,1,2].map(k=>`<td>${jpHTML(at(p,k))}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
+  body+='<div class="pv-sec"><h3>사람별 배정 <span>한 사람의 캐릭터는 포스마다 1개씩 들어갑니다</span></h3><div class="hqtw"><table class="hqt"><thead><tr><th>사람</th>'+r.g.map((_,k)=>`<th>${k+1}포스</th>`).join('')+'</tr></thead><tbody>'+
+    P.map(p=>`<tr><td>${p.row+1}번</td>${r.g.map((_,k)=>`<td>${jpHTML(at(p,k))}</td>`).join('')}</tr>`).join('')+'</tbody></table></div></div>';
   if(ed){
     const inG=new Set(r.g.flat().filter(Boolean));
     const out=P.flatMap(p=>p.chars.filter(c=>!inG.has(c.id)));
@@ -2098,7 +2228,7 @@ $('hqview').addEventListener('input',e=>{
 /* 선택(클릭)한 사람의 현재 위치로 이동 출발점을 만든다 */
 function hqSrcOf(name){
   const g=hqG();
-  if(g)for(let k=0;k<3;k++){const c=g[k].indexOf(name);if(c>=0)return {name,k,c}}
+  if(g)for(let k=0;k<g.length;k++){const c=g[k].indexOf(name);if(c>=0)return {name,k,c}}
   return {name,w:true};
 }
 function hqTargetAt(x,y){
@@ -2118,7 +2248,7 @@ function hqTargetAt(x,y){
 /* 칸 이동: 같은 포스 안·다른 포스·빈칸·사람 위(맞교환), 대기·제외 칸으로 빼기, 대기에서 넣기 */
 function hqApplyMove(src,tgt){
   const g=hqG();if(!g)return;
-  const find=name=>{for(let k=0;k<3;k++){const c=g[k].indexOf(name);if(c>=0)return {k,c}}return null};
+  const find=name=>{for(let k=0;k<g.length;k++){const c=g[k].indexOf(name);if(c>=0)return {k,c}}return null};
   let from=null;
   if(!src.w){
     from=g[src.k]&&g[src.k][src.c]===src.name?{k:src.k,c:src.c}:find(src.name);
@@ -2774,6 +2904,7 @@ function renderAdmin(){
   else if(tabs.length>1)h+='<button class="danger" data-act="tdel">현재 탭 삭제</button>';
   else h+='<span class="lbl">탭은 최소 1개가 필요합니다</span>';
   h+='<button data-act="alogout" style="margin-left:auto">관리자 나가기</button></div></div>';
+  if(kindOf(t)==='hq'){const np=hqNPOf(t);h+=`<div class="sec"><span class="lbl">본부 모드 <span style="font-weight:400;color:var(--text2)">· 현재 탭 · 한 사람의 캐릭터 한도와 포스 수가 함께 바뀝니다</span></span><div class="seg" role="group" aria-label="본부 모드"><button class="${np===3?'on':''}" data-act="hp3" aria-pressed="${np===3}">본1·부2 (포스 3개 · 캐릭터 3개)</button><button class="${np===4?'on':''}" data-act="hp4" aria-pressed="${np===4}">본1·부3 (포스 4개 · 캐릭터 4개)</button></div></div>`}
   h+='<div class="sec"><span class="lbl">시간표 표시 시간</span><div class="row" style="margin:0"><label style="display:inline-flex;align-items:center;gap:6px;font-size:13px">표시 시작 시각 <select id="vf" aria-label="표시 시작 시각">'+[...Array(10)].map((_,k)=>{const sv=18+2*k;return `<option value="${sv}"${sv===VIS0?' selected':''}>${lab(sv)}${sv===36?' (기본)':''}</option>`}).join('')+'</select> ~ 24:00</label><span class="lbl">기본은 18:00~24:00입니다. 더 이른 시간을 열면 모든 참여자의 시간표에 함께 표시되고 추천·편성에도 반영됩니다. 숨겨진 시간의 체크는 지워지지 않습니다.</span></div></div>';
   h+='<div class="sec"><span class="lbl">투표·메모·편성 초기화 (새 주 시작)</span><div class="row" style="margin:0">';
   if(pendReset==='tab')h+=`<span>"${esc(t.title)}" 탭의 모든 투표, 메모, 포스 편성을 지울까요?</span><button class="danger" data-act="reset-yes">예, 지우기</button><button data-act="reset-no">취소</button>`;
@@ -2828,6 +2959,14 @@ $('adm').addEventListener('click',async e=>{
       }
       return;
     }
+    if(act==='hp3'||act==='hp4'){
+      if(kindOf(t)!=='hq')return;
+      const hp=act==='hp4'?4:3;
+      if(hqNPOf(t)===hp)return;
+      await ad.setTabHp(t.id,hp);
+      done(hp===4?'본1·부3 모드(포스 4개, 캐릭터 4개)로 바꿨습니다. "포스 편성"을 다시 누르면 4개 포스로 편성됩니다.':'본1·부2 모드(포스 3개, 캐릭터 3개)로 바꿨습니다. "포스 편성"을 다시 누르면 3개 포스로 편성됩니다.');
+      return;
+    }
     if(act==='tdel'){pendTabDel=true;status='';renderAdmin();return}
     if(act==='tdel-no'){pendTabDel=false;renderAdmin();return}
     if(act==='tdel-yes'){
@@ -2864,7 +3003,7 @@ $('adm').addEventListener('click',async e=>{
     }
   }catch(err){
     const denied=err&&(err.code==='permission-denied'||/permission/i.test(String(err.message||'')));
-    setErrMsg(act==='tadd'&&(tkVal==='vote'||tkVal==='hq')&&denied?KINDS[tkVal]+' 탭은 새 firestore.rules를 Firebase에 게시해야 추가됩니다. 규칙을 게시한 뒤 다시 시도하세요.':'처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
+    setErrMsg((act==='hp3'||act==='hp4')&&denied?'본부 모드 전환은 새 firestore.rules를 Firebase에 게시해야 합니다. 규칙을 게시한 뒤 다시 시도하세요.':act==='tadd'&&(tkVal==='vote'||tkVal==='hq')&&denied?KINDS[tkVal]+' 탭은 새 firestore.rules를 Firebase에 게시해야 추가됩니다. 규칙을 게시한 뒤 다시 시도하세요.':'처리하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
   }
 });
 
@@ -2886,7 +3025,7 @@ function renderMgr(){
     const j=jobOf(n);
     if(mgrEdit===n)h+=`<span class="pi"><input id="men" type="text" maxlength="20" value="${esc(n)}" style="width:120px;min-height:30px;padding:3px 8px"><select id="mjob" style="min-height:30px">${jobOpts(j||'',true)}</select><button data-mg="save" data-n="${esc(n)}">저장</button><button data-mg="no">취소</button></span>`;
     else if(mgrDel===n)h+=`<span class="pi ask">${esc(dn(n))} 삭제?<button data-mg="del-yes" data-n="${esc(n)}">예</button><button data-mg="del-no">아니오</button></span>`;
-    else h+=`<span class="pi">${esc(dn(n))}${isHq()?`<em class="mt${isMainChar(n)?'':' sub'}">${isMainChar(n)?'본':'부'}</em>${isMainChar(n)?'':`<button data-mg="main" data-n="${esc(n)}" aria-label="${esc(n)} 본캐로 지정">본캐 지정</button>`}`:''}<button data-mg="edit" data-n="${esc(n)}" aria-label="${esc(n)} 수정">수정</button><button data-mg="del" data-n="${esc(n)}" aria-label="${esc(n)} 삭제">삭제</button></span>`;
+    else h+=`<span class="pi">${esc(dn(n))}${isHq()?`<em class="mt${isMainChar(n)?'':' sub'}">${isMainChar(n)?'본':'부'}</em>${(()=>{const p=personOf(n);return p&&!p.chars.includes(n)?'<small class="lbl">비활성</small>':''})()}${isMainChar(n)?(((personOf(n)||{}).mainsAll||[]).length>1?`<button data-mg="sub" data-n="${esc(n)}" aria-label="${esc(n)} 부캐로 지정">부캐 지정</button>`:''):`<button data-mg="main" data-n="${esc(n)}" aria-label="${esc(n)} 본캐로 지정">본캐 지정</button>`}`:''}<button data-mg="edit" data-n="${esc(n)}" aria-label="${esc(n)} 수정">수정</button><button data-mg="del" data-n="${esc(n)}" aria-label="${esc(n)} 삭제">삭제</button></span>`;
   });
   h+='</div><p class="err" id="mgr-err" style="margin:8px 0 0"></p><p class="ok" id="mgr-ok">'+esc(mgrMsg)+'</p>';
   w.innerHTML=h;
@@ -2899,7 +3038,7 @@ $('mgr-body').addEventListener('click',async e=>{
   try{
     if(a==='edit'){mgrEdit=n;mgrDel=null;mgrMsg='';renderMgr();return}
     if(a==='no'){mgrEdit=null;renderMgr();return}
-    if(a==='main'){await setMainChar(tabId,n);mgrMsg=`"${n}" 캐릭터를 본캐로 지정했습니다.`;renderMgr();renderChars();rerender();return}
+    if(a==='main'||a==='sub'){const msg=await setMainFlag(tabId,n,a==='main');if(msg){err(msg);return}mgrMsg=a==='main'?`"${n}" 캐릭터를 본캐로 지정했습니다.`:`"${n}" 캐릭터를 부캐로 바꿨습니다.`;renderMgr();renderChars();rerender();return}
     if(a==='del'){mgrDel=n;mgrEdit=null;mgrMsg='';renderMgr();return}
     if(a==='del-no'){mgrDel=null;renderMgr();return}
     if(a==='del-yes'){
@@ -2944,7 +3083,7 @@ async function renameChar(old,nv,job,oldProf){
     }
     await rewritePlan(t.id,n=>n===old?nv:n);
     const mo=await ad.getMember(t.id,old);
-    if(mo){await ad.saveMember(t.id,nv,t.kind==='hq'?!!mo.main:undefined);await ad.deleteMember(t.id,old)}
+    if(mo){await ad.saveMember(t.id,nv,t.kind==='hq'?!!mo.main:undefined,t.kind==='hq'?!!mo.off:undefined);await ad.deleteMember(t.id,old)}
   }
   const tp=profiles.get(nv);
   await ad.saveProfile(nv,tp?tp.job:job,tp?(tp.owner||''):keepOwner(old));
