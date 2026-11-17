@@ -336,6 +336,7 @@ details p{margin:8px 0 0}
     </div>
     <p class="lbl" id="ob-hint" style="margin:8px 0 0"></p>
     <p class="err" id="ob-err" style="margin:6px 0 0"></p>
+    <div class="row" id="obask" hidden style="margin:6px 0 0"></div>
   </div>
 
   <div id="main" hidden>
@@ -353,6 +354,7 @@ details p{margin:8px 0 0}
     </div>
     <p class="lbl" id="cjh" style="margin:0 0 6px" hidden></p>
     <p class="err" id="cerr"></p>
+    <div class="row" id="cask" hidden></div>
 
     <div class="row">
       <div class="seg" id="vseg"><button data-v="me" class="on">내 체크</button><button data-v="all">전체 현황</button><button data-v="party">포스 편성</button><button data-v="hq" hidden>포스편성(본부)</button><button data-v="hqm" hidden>포스편성(직접구성)</button></div>
@@ -629,7 +631,15 @@ function validName(v){
 }
 const jobOpts=(sel,ph=true)=>(ph?'<option value="">직업 선택</option>':'')+JOBS.map(j=>`<option value="${j}"${sel===j?' selected':''}>${j}</option>`).join('');
 let OWNER=ls.get('regi_owner','');
-if(!OWNER){OWNER='o'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);ls.set('regi_owner',OWNER)}
+const newOwnerId=()=>'o'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+/* 관리자가 분리해 준 owner 는 'sp_' 로 시작한다. 새 버전을 처음 여는 기기가 이 owner 를 "내 것"으로 자동 인정하지 않도록 구분한다 */
+const splitOwnerId=()=>'sp_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+if(!OWNER){OWNER=newOwnerId();ls.set('regi_owner',OWNER)}
+/* 이 기기가 "내 것"으로 확인한 owner 목록. 여기에 없는 owner 의 캐릭터는 자동으로 합치거나 로그인 목록에 올리지 않는다 */
+let LINKED=new Set(),linkedInit=ls.get('regi_linked','')!=='';
+try{(JSON.parse(ls.get('regi_linked','[]'))||[]).forEach(o=>{if(typeof o==='string'&&o)LINKED.add(o)})}catch(e){}
+const saveLinked=()=>ls.set('regi_linked',JSON.stringify([...LINKED]));
+const mineOwners=()=>{const m=new Set(LINKED);if(OWNER)m.add(OWNER);return m};
 
 /* ---------- 편성 알고리즘 (순수 함수) ---------- */
 const cmp=(a,b)=>{for(let i=0;i<a.length;i++){if(a[i]!==b[i])return a[i]>b[i]?1:-1}return 0};
@@ -990,7 +1000,7 @@ const defaultRules=()=>{const r={};GROUPS.forEach(g=>r[g.key]={on:false,mode:'ex
 let rules=defaultRules();
 let plan=null,planSaving=null,planTimer=null,setTimer=null,setSaving=false;
 let calOpen=false,calY=0,calM=0;
-let selMove=null,pendClearPlan=false,mgrEdit=null,mgrDel=null,mgrMsg='';
+let selMove=null,pendClearPlan=false,mgrEdit=null,mgrDel=null,mgrMsg='',mgrSplit=null,mgrMergeAsk='';
 let dataVer=0,recCache=null;
 const dirty=new Map();
 const grid=$('grid');
@@ -1184,7 +1194,7 @@ function renderChars(){
 }
 function renderQuick(){
   const w=$('qa');
-  const cand=[...known].filter(n=>profiles.has(n)&&!chars.includes(n)).sort((x,y)=>x.localeCompare(y,'ko'));
+  const cand=[...known].filter(n=>{const p=profiles.get(n);return p&&!chars.includes(n)&&(!p.owner||mineOwners().has(p.owner))}).sort((x,y)=>x.localeCompare(y,'ko'));
   const show=!$('addrow').hidden&&cand.length&&chars.length<maxChars();
   w.hidden=!show;
   w.innerHTML=show?'<span class="lbl">다른 탭에서 쓰던 캐릭터:</span>'+cand.map(n=>`<button data-qa="${esc(n)}" style="padding:4px 10px;min-height:32px">${esc(dn(n))} 추가</button>`).join(''):'';
@@ -1373,34 +1383,55 @@ function onMembers(list,meta){
   else if(isHq()){renderChars();rerender()}
   renderNov();renderMgr();
 }
-/* 같은 닉네임으로 로그인한 기기는 한 사람: 이 기기가 로그인한 캐릭터들의 owner 를 하나로 합친다(가장 작은 owner 기준, 기기마다 같은 결과) */
+/* 본인 확인을 마친 owner(LINKED)와 이 기기가 만든 owner 만 하나로 합친다(가장 작은 owner 기준). 다른 사람 캐릭터는 확인 전에는 합치지 않는다 */
 let unifyBusy=false;
 async function unifyOwners(){
   if(unifyBusy||!profilesLoaded)return false;
+  const mo=mineOwners();
   const mine=new Set();Object.values(tabChars).forEach(a=>(a||[]).forEach(n=>mine.add(n)));
   const owners=new Set();
-  mine.forEach(n=>{const p=profiles.get(n);if(p&&p.owner)owners.add(p.owner)});
+  mine.forEach(n=>{const p=profiles.get(n);if(p&&p.owner&&mo.has(p.owner))owners.add(p.owner)});
   const orphans=[...mine].filter(n=>{const p=profiles.get(n);return p&&!p.owner});
   if(!owners.size&&!orphans.length)return false;
   const canon=owners.size?[...owners].sort()[0]:OWNER;
-  const stale=new Set([...owners,OWNER]);stale.delete(canon);
+  const stale=new Set([...owners,...LINKED,OWNER]);stale.delete(canon);
   const fix=[...profiles].filter(([n,p])=>(p.owner&&stale.has(p.owner))||(!p.owner&&orphans.includes(n)));
-  if(OWNER===canon&&!fix.length)return false;
+  const settled=LINKED.size===1&&LINKED.has(canon);
+  if(OWNER===canon&&!fix.length&&settled)return false;
   unifyBusy=true;
   try{
+    LINKED.add(canon);saveLinked();
     await adReady;
     for(const [n,p] of fix){await ad.saveProfile(n,p.job,canon);profiles.set(n,{job:p.job,owner:canon})}
     if(OWNER!==canon){OWNER=canon;ls.set('regi_owner',canon)}
+    LINKED=new Set([canon]);saveLinked();
     bump();
   }catch(e){}
   finally{unifyBusy=false}
   return true;
 }
+/* 이 기기 로그인 목록에서 내 것으로 확인되지 않은 owner 의 캐릭터를 뺀다(서버 데이터는 지우지 않음) */
+function dropForeign(){
+  if(!profilesLoaded||unifyBusy)return false;
+  const mo=mineOwners();
+  const foreign=n=>{const p=profiles.get(n);return !!(p&&p.owner&&!mo.has(p.owner))};
+  let ch=false;
+  Object.keys(tabChars).forEach(k=>{
+    const a=tabChars[k]||[];
+    if(!a.some(foreign))return;
+    tabChars[k]=a.filter(n=>!foreign(n));ch=true;
+    tabAct[k]=(tabAct[k]||[]).filter(n=>tabChars[k].includes(n));
+    tabCi[k]=Math.max(0,Math.min(tabCi[k]||0,tabChars[k].length-1));
+  });
+  if(!ch)return false;
+  if(tabId){chars=tabChars[tabId]||[];act=new Set([...act].filter(n=>chars.includes(n)))}
+  normAct();saveChars();
+  return true;
+}
 /* 이 탭에서 같은 사람(owner 같음)의 다른 캐릭터를 이 기기 로그인에 함께 올린다. 본부 투표는 모두 활성화 */
 function syncSiblings(){
   if(!membersLoaded||!profilesLoaded||!tabId)return false;
-  const mo=new Set([OWNER]);
-  chars.forEach(n=>{const p=profiles.get(n);if(p&&p.owner)mo.add(p.owner)});
+  const mo=mineOwners();
   const cap=maxChars();
   if(chars.length>=cap)return false;
   const add=[...members].filter(n=>!chars.includes(n)&&!pendingReg.has(tabId+'\u0000'+n)&&mo.has((profiles.get(n)||{}).owner)).sort((x,y)=>(mainSet.has(y)-mainSet.has(x))||x.localeCompare(y,'ko'));
@@ -1416,8 +1447,9 @@ function onProfiles(list){
   list.forEach(p=>{if(p&&p.name&&JOBS.includes(p.job))m.set(p.name,{job:p.job,owner:p.owner||null})});
   profiles=m;profilesLoaded=true;
   profOwners=new Map(list.filter(p=>p&&p.name).map(p=>[p.name,p.owner||'']));bump();
+  if(!linkedInit){const mo=new Set([OWNER]);Object.values(tabChars).forEach(a=>(a||[]).forEach(n=>{const q=profiles.get(n);if(q&&q.owner&&!q.owner.startsWith('sp_'))mo.add(q.owner)}));LINKED=mo;saveLinked();linkedInit=true}
   renderChars();renderJobFix();renderMemos();renderMgr();rerender();renderQuick();
-  unifyOwners().then(()=>{if(syncSiblings())afterSiblings()}).catch(()=>{});
+  unifyOwners().then(()=>{const d=dropForeign(),sy=syncSiblings();if(d||sy)afterSiblings()}).catch(()=>{});
 }
 function parseRules(json){
   const r=defaultRules();
@@ -1707,12 +1739,12 @@ function bindNameHint(inId,selId,hintId){
 }
 async function waitProfiles(){for(let i=0;i<20&&!profilesLoaded;i++)await new Promise(r=>setTimeout(r,100))}
 const pendingReg=new Set();
-async function registerChar(name,job,tid,asMain){
+async function registerChar(name,job,tid,asMain,ok){
   const k=(tid||tabId)+'\u0000'+name;
   pendingReg.add(k);
-  try{return await registerCharInner(name,job,tid,asMain)}finally{pendingReg.delete(k)}
+  try{return await registerCharInner(name,job,tid,asMain,ok)}finally{pendingReg.delete(k)}
 }
-async function registerCharInner(name,job,tid,asMain){
+async function registerCharInner(name,job,tid,asMain,ok){
   tid=tid||tabId;
   const m=validName(name);if(m)return m;
   await waitProfiles();
@@ -1722,6 +1754,11 @@ async function registerCharInner(name,job,tid,asMain){
   const hqn=hqNPOf(tabs.find(t=>t.id===tid));
   if(hq&&list.length>=HQ_REG)return '본부 투표에서는 한 사람이 캐릭터를 최대 '+HQ_REG+'개까지 추가할 수 있습니다.';
   if(list.length>=MAXC)return '이 탭에는 캐릭터를 최대 '+MAXC+'개까지 추가할 수 있습니다.';
+  const ex=profiles.get(name);
+  if(ex&&ex.owner&&!mineOwners().has(ex.owner)){
+    if(!ok)return {ask:name};
+    LINKED.add(ex.owner);saveLinked();
+  }
   if(profiles.has(name)&&!profiles.get(name).owner){
     try{await adReady;const pj=profiles.get(name).job;await ad.saveProfile(name,pj,OWNER);profiles.set(name,{job:pj,owner:OWNER});bump()}catch(e){}
   }
@@ -1750,9 +1787,17 @@ async function registerCharInner(name,job,tid,asMain){
   if(tid===tabId){try{syncSiblings()}catch(e){}}
   return '';
 }
-async function addChar(){
-  const er=$('cerr');
-  const msg=await registerChar($('cn').value.trim(),$('cj').value,undefined,isHq()?$('cm').value==='main':undefined);
+function askOwner(boxId,name,yes,no){
+  const b=$(boxId);b.hidden=false;
+  b.innerHTML=`<span class="askt">"${esc(name)}" 캐릭터는 이미 다른 사람(다른 기기)이 등록한 이름입니다. 본인 캐릭터가 맞나요? 맞으면 이 기기와 같은 사람으로 합쳐집니다.</span><button class="danger" data-ok="1">본인 캐릭터입니다</button><button data-ok="0">아니요</button>`;
+  b.onclick=e=>{const x=e.target.closest('button[data-ok]');if(!x)return;const y=x.dataset.ok==='1';b.hidden=true;b.innerHTML='';b.onclick=null;y?yes():no()};
+}
+const hideAsk=id=>{const b=$(id);if(b){b.hidden=true;b.innerHTML='';b.onclick=null}};
+const OWNER_NO='다른 사람이 등록한 캐릭터입니다. 본인 캐릭터가 아니라면 다른 이름으로 등록하세요.';
+async function addChar(ok){
+  const er=$('cerr');hideAsk('cask');
+  const msg=await registerChar($('cn').value.trim(),$('cj').value,undefined,isHq()?$('cm').value==='main':undefined,ok===true);
+  if(msg&&typeof msg==='object'){er.textContent='';askOwner('cask',msg.ask,()=>addChar(true),()=>{er.textContent=OWNER_NO});return}
   if(msg){er.textContent=msg;return}
   er.textContent='';pendMy=false;
   $('cn').value='';$('cj').value='';$('cj').disabled=false;$('cjh').hidden=true;$('addrow').hidden=true;
@@ -1760,15 +1805,20 @@ async function addChar(){
 }
 $('qa').addEventListener('click',async e=>{
   const b=e.target.closest('button[data-qa]');if(!b)return;
-  const msg=await registerChar(b.dataset.qa,'');
-  if(msg){$('cerr').textContent=msg;return}
-  $('cerr').textContent='';pendMy=false;$('addrow').hidden=chars.length<1?false:true;
-  renderChars();renderMyReset();rerender();syncMemoUI();
+  const nm=b.dataset.qa;hideAsk('cask');
+  const go=async ok=>{
+    const msg=await registerChar(nm,'',undefined,undefined,ok===true);
+    if(msg&&typeof msg==='object'){$('cerr').textContent='';askOwner('cask',msg.ask,()=>go(true),()=>{$('cerr').textContent=OWNER_NO});return}
+    if(msg){$('cerr').textContent=msg;return}
+    $('cerr').textContent='';pendMy=false;$('addrow').hidden=chars.length<1?false:true;
+    renderChars();renderMyReset();rerender();syncMemoUI();
+  };
+  go();
 });
 $('cadd').addEventListener('click',addChar);
 $('cn').addEventListener('keydown',e=>{if(e.key==='Enter')addChar()});
-$('cn').addEventListener('input',()=>{$('cerr').textContent=''});
-$('ccancel').addEventListener('click',()=>{$('addrow').hidden=true;$('cerr').textContent='';$('cjh').hidden=true});
+$('cn').addEventListener('input',()=>{$('cerr').textContent='';hideAsk('cask')});
+$('ccancel').addEventListener('click',()=>{$('addrow').hidden=true;$('cerr').textContent='';$('cjh').hidden=true;hideAsk('cask')});
 $('cj').innerHTML=jobOpts('');
 $('ob-job').innerHTML=jobOpts('');
 bindNameHint('cn','cj','cjh');
@@ -3025,6 +3075,39 @@ function mgrNames(){
   ents.forEach((b,n)=>{if(anyBit(b))s.add(n)});
   return [...s].sort((x,y)=>x.localeCompare(y,'ko'));
 }
+function ownerGroupsHtml(){
+  const by=new Map();
+  profiles.forEach((p,n)=>{if(p.owner){if(!by.has(p.owner))by.set(p.owner,[]);by.get(p.owner).push(n)}});
+  const here=new Set(mgrNames());
+  const gs=[...by].filter(([o,a])=>a.length>1&&a.some(n=>here.has(n))).sort((x,y)=>y[1].length-x[1].length||x[0].localeCompare(y[0]));
+  if(!gs.length)return '<p class="lbl" style="margin:0 0 8px">같은 사람으로 묶인 캐릭터가 없습니다.</p>';
+  return '<p class="lbl" style="margin:0 0 8px">같은 owner를 쓰는 캐릭터는 같은 사람으로 처리됩니다. 잘못 묶였다면 캐릭터마다 "소유자 분리"를 눌러 나누고, 본인이 다시 추가해 "본인 캐릭터입니다"를 눌러 확인하게 하세요. 묶인 캐릭터가 모두 다른 사람이면 전부 분리하세요.</p>'+gs.map(([o,a])=>{
+    a.sort((x,y)=>x.localeCompare(y,'ko'));
+    const one=mgrSplit&&mgrSplit.n&&a.includes(mgrSplit.n);
+    const note=one?`<p class="askt" style="margin:0 0 6px">"${esc(mgrSplit.n)}" 캐릭터를 다른 사람으로 분리할까요? 같은 묶음의 나머지 캐릭터도 새 owner로 바뀌어, 묶여 있던 사람들의 로그인 목록에서 모두 빠집니다. 각자 다시 추가해 "본인 캐릭터입니다"를 누르면 합쳐집니다. <button class="danger" data-mg="split-yes" data-n="${esc(mgrSplit.n)}">분리</button><button data-mg="split-no">취소</button></p>`:'';
+    return `<div class="og" style="border:1px solid var(--warn-text);background:var(--warn-bg);color:var(--warn-text);border-radius:8px;padding:8px 10px;margin:0 0 10px"><div style="font-size:13px;margin-bottom:6px">같은 사람으로 묶임 · ${a.length}개 (${esc(o.slice(0,6))}…)</div>${note}<div class="pl">${a.map(n=>`<span class="pi">${esc(dn(n))}<small class="lbl">${esc(jobOf(n)||'')}${here.has(n)?'':' · 다른 탭'}</small><button data-mg="split" data-n="${esc(n)}" aria-label="${esc(n)} 소유자 분리">소유자 분리</button></span>`).join('')}</div></div>`;
+  }).join('');
+}
+/* 한 캐릭터를 분리하면 그 캐릭터는 새 owner 를 받고, 같은 묶음의 나머지도 하나의 새 owner 로 옮긴다.
+   이전 owner 를 더 이상 쓰지 않게 해야, 그 owner 로 로그인해 있던 기기들이 남은 캐릭터를 통해 다시 합치지 못한다. */
+async function splitOwners(names){
+  await adReady;
+  let moved=0;
+  for(const n of names){
+    const p=profiles.get(n);if(!p)continue;
+    const old=p.owner;
+    const o=splitOwnerId();
+    await ad.saveProfile(n,p.job,o);profiles.set(n,{job:p.job,owner:o});profOwners.set(n,o);
+    if(!old)continue;
+    const rest=[...profiles].filter(([x,q])=>x!==n&&q.owner===old);
+    if(!rest.length)continue;
+    const r=splitOwnerId();
+    for(const [x,q] of rest){await ad.saveProfile(x,q.job,r);profiles.set(x,{job:q.job,owner:r});profOwners.set(x,r);moved++}
+  }
+  bump();
+  if(dropForeign())afterSiblings();
+  return moved;
+}
 function renderMgr(){
   const d=$('mgr');
   d.hidden=!admin;
@@ -3032,7 +3115,7 @@ function renderMgr(){
   const w=$('mgr-body');
   if(w.contains(document.activeElement)&&document.activeElement.tagName==='INPUT')return;
   const list=mgrNames();
-  let h=`<p class="lbl" style="margin:0 0 8px">${esc(curTab()?curTab().title:'')} 탭의 로그인 캐릭터 ${list.length}명 · 이름 수정과 직업 변경은 모든 탭에 적용되고, 삭제는 이 탭에서만 적용됩니다. 이미 있는 이름으로 바꾸면 두 캐릭터가 합쳐집니다.</p><div class="pl">`;
+  let h=`<p class="lbl" style="margin:0 0 8px">${esc(curTab()?curTab().title:'')} 탭의 로그인 캐릭터 ${list.length}명 · 이름 수정과 직업 변경은 모든 탭에 적용되고, 삭제는 이 탭에서만 적용됩니다. 이미 있는 이름으로 바꾸면 두 캐릭터가 합쳐집니다. 직업 수정과 이름 변경은 캐릭터의 소유자를 바꾸지 않습니다.</p>${ownerGroupsHtml()}<div class="pl">`;
   list.forEach(n=>{
     const j=jobOf(n);
     if(mgrEdit===n)h+=`<span class="pi"><input id="men" type="text" maxlength="20" value="${esc(n)}" style="width:120px;min-height:30px;padding:3px 8px"><select id="mjob" style="min-height:30px">${jobOpts(j||'',true)}</select><button data-mg="save" data-n="${esc(n)}">저장</button><button data-mg="no">취소</button></span>`;
@@ -3048,10 +3131,18 @@ $('mgr-body').addEventListener('click',async e=>{
   const a=b.dataset.mg,n=b.dataset.n;
   const err=m=>{const x=$('mgr-err');if(x)x.textContent=m;mgrMsg=''};
   try{
-    if(a==='edit'){mgrEdit=n;mgrDel=null;mgrMsg='';renderMgr();return}
-    if(a==='no'){mgrEdit=null;renderMgr();return}
+    if(a==='split'){mgrSplit={n};mgrEdit=null;mgrDel=null;mgrMsg='';renderMgr();return}
+    if(a==='split-no'){mgrSplit=null;renderMgr();return}
+    if(a==='split-yes'){
+      mgrSplit=null;
+      const moved=await splitOwners([n]);
+      mgrMsg=`"${n}" 캐릭터를 다른 사람으로 분리했습니다.`+(moved?` 같은 묶음의 나머지 ${moved}개도 새 owner로 바뀌어 다시 본인 확인이 필요합니다.`:'');
+      renderMgr();renderChars();rerender();return;
+    }
+    if(a==='edit'){mgrEdit=n;mgrDel=null;mgrSplit=null;mgrMergeAsk='';mgrMsg='';renderMgr();return}
+    if(a==='no'){mgrEdit=null;mgrMergeAsk='';renderMgr();return}
     if(a==='main'||a==='sub'){const msg=await setMainFlag(tabId,n,a==='main');if(msg){err(msg);return}mgrMsg=a==='main'?`"${n}" 캐릭터를 본캐로 지정했습니다.`:`"${n}" 캐릭터를 부캐로 바꿨습니다.`;renderMgr();renderChars();rerender();return}
-    if(a==='del'){mgrDel=n;mgrEdit=null;mgrMsg='';renderMgr();return}
+    if(a==='del'){mgrDel=n;mgrEdit=null;mgrSplit=null;mgrMsg='';renderMgr();return}
     if(a==='del-no'){mgrDel=null;renderMgr();return}
     if(a==='del-yes'){
       mgrDel=null;
@@ -3065,6 +3156,11 @@ $('mgr-body').addEventListener('click',async e=>{
       const old=profiles.get(n),target=profiles.get(nv);
       const finalJob=nv!==n&&target?target.job:(job||(old&&old.job)||'');
       if(nv!==n&&!target&&!finalJob){err('새 이름에 쓸 직업을 선택하세요.');return}
+      if(nv!==n&&target&&old&&old.owner&&target.owner&&old.owner!==target.owner&&mgrMergeAsk!==n+'>'+nv){
+        mgrMergeAsk=n+'>'+nv;
+        err(`"${nv}"은(는) 다른 사람이 등록한 캐릭터입니다. 합치면 두 캐릭터의 체크가 하나로 합쳐집니다. 그래도 합치려면 저장을 한 번 더 누르세요.`);return;
+      }
+      mgrMergeAsk='';
       mgrEdit=null;
       if(nv===n){
         if(job&&(!old||old.job!==job)){await ad.saveProfile(n,job,keepOwner(n))}
@@ -3098,7 +3194,7 @@ async function renameChar(old,nv,job,oldProf){
     if(mo){await ad.saveMember(t.id,nv,t.kind==='hq'?!!mo.main:undefined,t.kind==='hq'?!!mo.off:undefined);await ad.deleteMember(t.id,old)}
   }
   const tp=profiles.get(nv);
-  await ad.saveProfile(nv,tp?tp.job:job,tp?(tp.owner||''):keepOwner(old));
+  await ad.saveProfile(nv,tp?tp.job:job,(tp&&tp.owner)||(oldProf&&oldProf.owner)||keepOwner(old));
   await ad.deleteProfile(old);
   Object.keys(tabChars).forEach(k=>{tabChars[k]=[...new Set(tabChars[k].map(c=>c===old?nv:c))]});
   if(known.has(old)){known.delete(old);known.add(nv)}
@@ -3198,19 +3294,21 @@ function showOnboard(){
   $('ob-name').value='';$('ob-job').value='';$('ob-job').disabled=false;$('ob-err').textContent='';obHint();
   renderObTabs();
 }
-async function goOnboard(){
+async function goOnboard(ok){
   const tid=obTab||(tabs[0]&&tabs[0].id);
+  hideAsk('obask');
   if(!tid){$('ob-err').textContent='탭을 불러오는 중입니다. 잠시 후 다시 시도하세요.';return}
-  const msg=await registerChar($('ob-name').value.trim(),$('ob-job').value,tid);
+  const msg=await registerChar($('ob-name').value.trim(),$('ob-job').value,tid,undefined,ok===true);
+  if(msg&&typeof msg==='object'){$('ob-err').textContent='';askOwner('obask',msg.ask,()=>goOnboard(true),()=>{$('ob-err').textContent=OWNER_NO});return}
   if(msg){$('ob-err').textContent=msg;return}
   startMain();
   if(tid!==tabId)selectTab(tid);
   else{renderChars();renderMyReset();renderMemos()}
   syncMemoUI();
 }
-$('ob-go').addEventListener('click',goOnboard);
+$('ob-go').addEventListener('click',()=>goOnboard());
 $('ob-name').addEventListener('keydown',e=>{if(e.key==='Enter')goOnboard()});
-$('ob-name').addEventListener('input',()=>{$('ob-err').textContent=''});
+$('ob-name').addEventListener('input',()=>{$('ob-err').textContent='';hideAsk('obask')});
 addEventListener('online',()=>setConn('on',ad?ad.label:''));
 addEventListener('offline',()=>setConn('err','오프라인'));
 
