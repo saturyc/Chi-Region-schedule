@@ -646,18 +646,21 @@ function compose(people,rules,leaders,R,mode){
     const p=people.find(x=>x.name===L);
     if(p&&av(p,pi)&&!assigned.has(p.name))add(pi,p);
   });
-  const reqs=[];
-  [0,1].forEach(pi=>GROUPS.forEach(g=>{const r=rules[g.key];if(r&&r.on&&r.n>0&&(r.mode==='min'||r.mode==='exact'))reqs.push({pi,g,n:r.n})}));
   const pool=(pi,f)=>people.filter(p=>!assigned.has(p.name)&&av(p,pi)&&(!f||f(p)));
-  reqs.sort((x,y)=>pool(x.pi,p=>inG(p,x.g)).length-pool(y.pi,p=>inG(p,y.g)).length);
-  reqs.forEach(q=>{
-    while(cnt(q.pi,q.g)<q.n&&members[q.pi].length<R){
-      const c=pool(q.pi,p=>inG(p,q.g)&&!oc(q.pi,p));
-      if(!c.length)break;
-      const only=c.filter(p=>!av(p,1-q.pi));
-      add(q.pi,(only.length?only:c)[0]);
-    }
-  });
+  /* 필수 직업(최소/정확히) 확보: pis에 든 포스만, 구하기 어려운 직업부터 */
+  const reqPhase=pis=>{
+    const reqs=[];
+    pis.forEach(pi=>GROUPS.forEach(g=>{const r=rules[g.key];if(r&&r.on&&r.n>0&&(r.mode==='min'||r.mode==='exact'))reqs.push({pi,g,n:r.n})}));
+    reqs.sort((x,y)=>pool(x.pi,p=>inG(p,x.g)).length-pool(y.pi,p=>inG(p,y.g)).length);
+    reqs.forEach(q=>{
+      while(cnt(q.pi,q.g)<q.n&&members[q.pi].length<R){
+        const c=pool(q.pi,p=>inG(p,q.g)&&!oc(q.pi,p));
+        if(!c.length)break;
+        const only=c.filter(p=>!av(p,1-q.pi));
+        add(q.pi,(only.length?only:c)[0]);
+      }
+    });
+  };
   const okMax=(pi,p)=>{
     const g=groupOf(p.job);if(!g)return true;
     const r=rules[g.key];if(!r||!r.on)return true;
@@ -671,7 +674,7 @@ function compose(people,rules,leaders,R,mode){
       const order=[0,1].sort((x,y)=>members[x].length-members[y].length);
       for(const pi of order){
         if(members[pi].length>=R)continue;
-        const c=pool(pi,p=>!strict||(okMax(pi,p)&&!oc(pi,p)));
+        const c=pool(pi,p=>!oc(pi,p)&&(!strict||okMax(pi,p)));
         if(!c.length)continue;
         const only=c.filter(p=>!av(p,1-pi));
         add(pi,(only.length?only:c)[0]);
@@ -679,18 +682,24 @@ function compose(people,rules,leaders,R,mode){
       }
     }
   };
-  /* 필수 직업(최소/정확히)은 위에서 양쪽 포스 모두 먼저 확보했다. 남는 자리는 1포스부터 R명까지 채우고, 그다음 2포스를 채운다.
-     1단계: 상한·같은 사람 중복 모두 지킴 / 2단계: 상한만 무시 / 3단계(마지막 수단): 같은 사람 중복도 허용 */
+  /* 채우는 순서를 모드별로 모두 만들어 보고 점수로 고른다.
+     prio/prio2/bal: 필수 직업을 양쪽 포스 모두 먼저 확보한 뒤 한 포스(1포스/2포스)를 R명까지, 또는 번갈아 채움.
+     seq0/seq1: 한 포스(1포스/2포스)를 필수 직업까지 포함해 R명으로 먼저 완성한 뒤, 남은 사람으로 다른 포스를 구성.
+     1단계: 상한을 지킴 / 2단계: 상한만 무시. 같은 사람(owner)의 캐릭터 중복은 어떤 단계에서도 넣지 않는다. */
   const fillOne=(pi,lv)=>{
     while(members[pi].length<R){
-      const c=pool(pi,p=>lv===1?(okMax(pi,p)&&!oc(pi,p)):lv===2?!oc(pi,p):true);
+      const c=pool(pi,p=>lv===1?(okMax(pi,p)&&!oc(pi,p)):!oc(pi,p));
       if(!c.length)break;
       const only=c.filter(p=>!av(p,1-pi));
       add(pi,(only.length?only:c)[0]);
     }
   };
-  if(mode==='bal'){fill(true);fill(false)}
-  else{[0,1].forEach(pi=>{fillOne(pi,1);fillOne(pi,2)});[0,1].forEach(pi=>fillOne(pi,3))}
+  if(mode==='seq0'||mode==='seq1'){(mode==='seq1'?[1,0]:[0,1]).forEach(pi=>{reqPhase([pi]);fillOne(pi,1);fillOne(pi,2)})}
+  else{
+    reqPhase([0,1]);
+    if(mode==='bal'){fill(true);fill(false)}
+    else{(mode==='prio2'?[1,0]:[0,1]).forEach(pi=>{fillOne(pi,1);fillOne(pi,2)})}
+  }
   return {members,wait:people.filter(p=>!assigned.has(p.name)&&(p.a||p.b))};
 }
 function evalRes(res,rules,R,nP){
@@ -713,9 +722,12 @@ function evalRes(res,rules,R,nP){
   const full=res.members.slice(0,nP).every(m=>m.length>=R);
   const tier=full&&viol===0?1:0;
   const n0=res.members[0].length,n1=res.members[1].length;
-  const fill0=new Set(res.members[0].map(p=>p.owner||('n:'+p.name))).size;
-  /* 우선순위: 편성 인원 > 필수 직업 충족 > 1포스 채움 인원 > 그 밖의 위반 */
-  return {viol,need,checks,F,full,tier,n0,n1,fill0,S:tier?[1,F,0,0,0]:[0,F,-need,fill0,-(viol-need)]};
+  const uniq=m=>new Set(m.map(p=>p.owner||('n:'+p.name))).size;
+  const fill0=uniq(res.members[0]);
+  const nFull=res.members.slice(0,nP).filter(m=>m.length>=R).length;
+  const mx=Math.max(...res.members.slice(0,nP).map(uniq));
+  /* 우선순위: 편성 인원 > 완성된 포스(R명) 수 > 필수 직업 충족 > 가장 많이 찬 포스의 인원(1·2포스 무관) > 그 밖의 위반 */
+  return {viol,need,checks,F,full,tier,n0,n1,fill0,nFull,mx,S:tier?[1,F,0,0,0,0]:[0,F,nFull,-need,mx,-(viol-need)]};
 }
 function composeBest(people,rules,leaders,R,nP,K,seed){
   const base=people.slice().sort((x,y)=>x.name.localeCompare(y.name,'ko'));
@@ -724,7 +736,7 @@ function composeBest(people,rules,leaders,R,nP,K,seed){
   for(let k=0;k<=K;k++){
     let arr=base;
     if(k>0||seed!=null){arr=base.slice();for(let i=arr.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}}
-    for(const mode of ['prio','bal']){
+    for(const mode of ['prio','prio2','bal','seq0','seq1']){
       const res=compose(arr,rules,leaders,R,mode);
       const ev=evalRes(res,rules,R,nP);
       if(!best||cmp(ev.S,best.ev.S)>0)best={...res,ev};
